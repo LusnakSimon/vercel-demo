@@ -43,15 +43,19 @@ jobs:
       env:
         VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
 
-    - name: Deploy to Vercel (prod) using vercel-action
+    - name: Ensure VERCEL_TOKEN is present
+      run: |
+        if [ -z "$VERCEL_TOKEN" ]; then
+          echo "ERROR: VERCEL_TOKEN secret is not set in the repository. Add it (Settings → Secrets) and re-run the workflow." >&2
+          exit 1
+        fi
+      env:
+        VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
+
+    - name: Deploy to Vercel and wait for health
       id: vercel
-      uses: amondnet/vercel-action@v20
-      with:
-        vercel-token: ${{ secrets.VERCEL_TOKEN }}
-        vercel-args: '--prod'
-        working-directory: '.'
-        wait-for-deployment: true
-      # Optional: set VERCEL_ORG_ID and VERCEL_PROJECT_ID as repo secrets if you have them
-      # env:
-      #   VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
-      #   VERCEL_PROJECT_ID: ${{ secrets.VERCEL_PROJECT_ID }}
+      run: |
+        chmod +x .github/scripts/vercel_deploy_and_wait.sh
+        .github/scripts/vercel_deploy_and_wait.sh
+      env:
+        VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
