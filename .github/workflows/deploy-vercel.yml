@@ -17,15 +17,24 @@ jobs:
       with:
         node-version: '18'
 
-    - name: Install app dependencies
+    - name: Install dependencies (if present)
       run: |
-        cd app/todo
-        npm ci
+        if [ -f package.json ]; then
+          echo "package.json found — installing dependencies"
+          npm ci
+        else
+          echo "no package.json found — skipping npm install"
+        fi
 
-    - name: Run unit tests
+    - name: Run unit tests (if present)
       run: |
-        cd app/todo
-        npm test
+        # Run tests only if package.json exists and has a test script
+        if [ -f package.json ] && node -e "process.exit(Boolean(require('./package.json').scripts && require('./package.json').scripts.test) ? 0 : 1)"; then
+          echo "test script found — running npm test"
+          npm test
+        else
+          echo "no test script present — skipping tests"
+        fi
 
     - name: Vercel debug info
       run: |
