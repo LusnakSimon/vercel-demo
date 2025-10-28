@@ -15,7 +15,7 @@ echo "Installing vercel (via npx) and deploying..."
 
 # Run vercel deploy non-interactively. Use --confirm to skip prompts.
 # Capture both stdout and stderr because the CLI prints useful info to both.
-out=$(npx vercel --prod --confirm --token "$VERCEL_TOKEN" 2>&1) || {
+out=$(npx vercel --prod --yes --token "$VERCEL_TOKEN" 2>&1) || {
   echo "Vercel CLI failed:" >&2
   echo "$out" >&2
   exit 1
@@ -24,28 +24,38 @@ out=$(npx vercel --prod --confirm --token "$VERCEL_TOKEN" 2>&1) || {
 echo "Vercel CLI output:"
 echo "$out"
 
-# Extract the first https://... URL produced by the CLI output.
-url=$(printf "%s\n" "$out" | grep -oE 'https://[^[:space:]]+' | head -n1 || true)
+# Prefer the 'Production:' URL line if present, otherwise prefer any vercel.app URL, otherwise the last https:// URL
+url=$(printf "%s\n" "$out" | sed -n 's/^Production:[[:space:]]*//p' | head -n1 || true)
+if [ -z "$url" ]; then
+  url=$(printf "%s\n" "$out" | grep -oE 'https://[^[:space:]]+' | grep -E '\.vercel\.app|vercel\.dev' | tail -n1 || true)
+fi
+if [ -z "$url" ]; then
+  url=$(printf "%s\n" "$out" | grep -oE 'https://[^[:space:]]+' | tail -n1 || true)
+fi
 
 if [ -z "$url" ]; then
   echo "ERROR: could not extract deployment URL from vercel CLI output" >&2
   exit 1
 fi
 
-echo "Deployment URL: $url"
+echo "Deployment base URL: $url"
 
-echo "Waiting for /.health to return 200 (timeout 150s)..."
+# Try both /.health and /api/health (some projects expose health at /api/health)
+echo "Waiting for health endpoints to return 200 (timeout 150s)..."
 max_attempts=30
 attempt=1
 while [ $attempt -le $max_attempts ]; do
-  status=$(curl -s -o /dev/null -w "%{http_code}" "$url/.health" || echo "000")
-  echo "Attempt $attempt: HTTP $status"
-  if [ "$status" = "200" ]; then
-    echo "Health check passed"
-    # set output for later workflow steps (deprecated syntax may warn in GH Actions but okay)
-    echo "deployment_url=$url" >> $GITHUB_OUTPUT || true
-    exit 0
-  fi
+  for path in "/.health" "/api/health"; do
+    full="$url$path"
+    status=$(curl -s -o /dev/null -w "%{http_code}" "$full" || echo "000")
+    echo "Attempt $attempt: GET $full -> HTTP $status"
+    if [ "$status" = "200" ]; then
+      echo "Health check passed at $full"
+      echo "deployment_url=$url" >> $GITHUB_OUTPUT || true
+      echo "health_path=$path" >> $GITHUB_OUTPUT || true
+      exit 0
+    fi
+  done
   attempt=$((attempt+1))
   sleep 5
 done
