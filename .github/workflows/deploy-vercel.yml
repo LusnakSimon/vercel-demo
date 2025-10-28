@@ -36,6 +36,11 @@ jobs:
           echo "no test script present — skipping tests"
         fi
 
+    - name: notify vercel
+      uses: vercel/repository-dispatch/actions/status@v1
+      with:
+        name: Vercel - vercel-demo: lint
+
     - name: Vercel debug info
       run: |
         echo "VERCEL_TOKEN set: ${VERCEL_TOKEN:+yes}"
