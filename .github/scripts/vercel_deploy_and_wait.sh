@@ -56,6 +56,31 @@ while [ $attempt -le $max_attempts ]; do
       exit 0
     fi
   done
+  # If we got HTTP 000, print diagnostic info once per attempt to help debug networking/DNS issues
+  if [ "$status" = "000" ]; then
+    echo "--- Diagnostic: HTTP 000 detected for $url on attempt $attempt ---"
+    # extract hostname
+    host=$(printf '%s\n' "$url" | sed -E 's#https?://([^/]+).*#\1#')
+    echo "Hostname: $host"
+    if command -v getent >/dev/null 2>&1; then
+      echo "getent hosts output:"
+      getent hosts "$host" || true
+    fi
+    if command -v nslookup >/dev/null 2>&1; then
+      echo "nslookup output:"
+      nslookup "$host" || true
+    fi
+    if command -v dig >/dev/null 2>&1; then
+      echo "dig output:"
+      dig +short "$host" || true
+    fi
+    echo "Curl verbose output (attempting IPv4 then IPv6):"
+    echo "--- curl --ipv4 -v $url/.health ---"
+    curl --ipv4 -v --max-time 10 "$url/.health" || true
+    echo "--- curl --ipv6 -v $url/.health ---"
+    curl --ipv6 -v --max-time 10 "$url/.health" || true
+    echo "--- end diagnostics ---"
+  fi
   attempt=$((attempt+1))
   sleep 5
 done
