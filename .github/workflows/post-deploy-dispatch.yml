@@ -1,0 +1,39 @@
+name: Post-deploy (triggered by Vercel via repository_dispatch)
+
+on:
+  repository_dispatch:
+    types: [vercel_deployment]
+
+jobs:
+  post-deploy-checks:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Show dispatch payload
+        run: |
+          echo "Received repository_dispatch payload:"
+          echo "$GITHUB_EVENT_PATH"
+          cat "$GITHUB_EVENT_PATH" | jq '.' || true
+
+      - name: Run health check against deployed URL
+        env:
+          DEPLOY_URL: ${{ github.event.client_payload.url }}
+        run: |
+          if [ -z "$DEPLOY_URL" ] || [ "$DEPLOY_URL" = "null" ]; then
+            echo "No deploy URL in payload, aborting"
+            exit 1
+          fi
+          echo "Probing $DEPLOY_URL/api/health and $DEPLOY_URL/.health"
+          for p in "/api/health" "/.health"; do
+            echo "GET $DEPLOY_URL$p"
+            status=$(curl -s -o /dev/null -w "%{http_code}" "$DEPLOY_URL$p" || echo "000")
+            echo "HTTP $status"
+            if [ "$status" = "200" ]; then
+              echo "Health check passed at $p"
+              exit 0
+            fi
+          done
+          echo "Health checks failed"
+          exit 1
