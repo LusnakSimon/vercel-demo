@@ -92,8 +92,104 @@
           </div>
 
           <div class="card" style="margin-top:16px">
-            <h3 style="margin:0 0 8px">About this demo</h3>
-            <p class="muted">The CI workflow deploys to Vercel and runs smoke tests. The site serves a static index (this page) and serverless functions under <code>/api</code>. Use the project to test deployment flows without cloud costs.</p>
+            <h3 style="margin:0 0 8px">Try the Todos</h3>
+            <p class="muted">Add simple todos below. The page will try to use <code>/api/todos</code>. If the API is unavailable (for example, when viewing locally), the client will fall back to <code>localStorage</code>.</p>
+
+            <form id="todo-form" class="todo-form" style="margin-top:12px;display:flex;gap:8px">
+              <input id="todo-input" type="text" placeholder="New todo title" style="flex:1;padding:10px;border-radius:8px;border:1px solid rgba(255,255,255,0.04);background:transparent;color:inherit" aria-label="New todo title" />
+              <button type="submit" style="padding:10px 14px;border-radius:8px;border:0;background:linear-gradient(90deg,var(--accent),#3b82f6);color:#02122a;font-weight:600">Add</button>
+            </form>
+
+            <ul id="todo-list" class="todo-list" style="list-style:none;padding:0;margin:12px 0 0;display:flex;flex-direction:column;gap:8px">
+              <li class="small muted">Loading todos…</li>
+            </ul>
+
+            <style>
+              .todo-list .todo-item{display:flex;align-items:center;justify-content:space-between;padding:10px;border-radius:8px;background:rgba(255,255,255,0.02)}
+              .todo-list .todo-item .title{font-weight:600}
+              .todo-list .todo-item .meta{font-size:12px;color:var(--muted)}
+              .todo-empty{color:var(--muted);font-size:14px}
+            </style>
+
+            <script>
+              (function(){
+                const api = '/api/todos';
+                const listEl = document.getElementById('todo-list');
+                const form = document.getElementById('todo-form');
+                const input = document.getElementById('todo-input');
+
+                function fromLocal(){
+                  try{ return JSON.parse(localStorage.getItem('vercel-demo-todos')||'[]') }catch(e){return[]}
+                }
+                function toLocal(items){
+                  try{ localStorage.setItem('vercel-demo-todos', JSON.stringify(items)) }catch(e){}
+                }
+
+                function render(items){
+                  listEl.innerHTML = '';
+                  if(!items || items.length===0){
+                    const li = document.createElement('li'); li.className='todo-empty muted'; li.textContent='No todos yet.'; listEl.appendChild(li); return;
+                  }
+                  items.forEach((t,idx)=>{
+                    const li = document.createElement('li'); li.className='todo-item';
+                    const left = document.createElement('div');
+                    const title = document.createElement('div'); title.className='title'; title.textContent = t.title || t.text || ('Todo '+(idx+1));
+                    const meta = document.createElement('div'); meta.className='meta'; meta.textContent = (t.createdAt? new Date(t.createdAt).toLocaleString() : '');
+                    left.appendChild(title); if(meta.textContent) left.appendChild(meta);
+                    const right = document.createElement('div');
+                    const doneBtn = document.createElement('button'); doneBtn.textContent='✓'; doneBtn.title='Mark done (local)'; doneBtn.style= 'margin-left:8px;border-radius:8px;padding:6px 8px;border:0;background:rgba(255,255,255,0.04);color:var(--muted)';
+                    doneBtn.addEventListener('click',()=>{
+                      // local-only mark as done (no API delete implemented)
+                      li.style.opacity=0.5; li.style.textDecoration='line-through';
+                    });
+                    right.appendChild(doneBtn);
+                    li.appendChild(left); li.appendChild(right); listEl.appendChild(li);
+                  })
+                }
+
+                async function load(){
+                  try{
+                    const res = await fetch(api,{cache:'no-store'});
+                    if(!res.ok) throw new Error('bad');
+                    const body = await res.json();
+                    const items = Array.isArray(body) ? body : (body.todos || body.items || []);
+                    render(items);
+                    toLocal(items);
+                  }catch(e){
+                    // fallback
+                    const items = fromLocal();
+                    render(items);
+                  }
+                }
+
+                form.addEventListener('submit', async function(ev){
+                  ev.preventDefault();
+                  const title = input.value && input.value.trim(); if(!title) return;
+                  const newItem = {title, createdAt: new Date().toISOString()};
+                  // optimistic UI
+                  const current = (function(){
+                    const nodes = Array.from(listEl.querySelectorAll('.todo-item')).map(n=>({title:n.querySelector('.title').textContent}));
+                    return nodes;
+                  })();
+                  current.unshift(newItem); render(current);
+                  input.value='';
+                  try{
+                    const res = await fetch(api, {method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify(newItem)});
+                    if(!res.ok) throw new Error('post failed');
+                    const created = await res.json();
+                    // reload to get canonical list
+                    await load();
+                  }catch(err){
+                    // save to localStorage as fallback
+                    const saved = fromLocal(); saved.unshift(newItem); toLocal(saved);
+                    // leave optimistic UI
+                  }
+                });
+
+                // initial
+                load();
+              })();
+            </script>
           </div>
         </main>
 
