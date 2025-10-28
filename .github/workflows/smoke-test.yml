@@ -1,0 +1,45 @@
+name: Smoke test deployed site
+
+on:
+  workflow_dispatch: {}
+  push:
+    branches: [ main ]
+
+jobs:
+  smoke:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check for VERCEL_URL secret
+        id: check
+        run: |
+          if [ -z "${{ secrets.VERCEL_URL }}" ]; then
+            echo "VERCEL_URL not set. Skipping smoke test (set the repo secret VERCEL_URL to the site base URL, e.g. https://your-project.vercel.app).";
+            echo "skip=true" >> $GITHUB_OUTPUT;
+          else
+            echo "skip=false" >> $GITHUB_OUTPUT;
+            echo "url=${{ secrets.VERCEL_URL }}" >> $GITHUB_OUTPUT;
+          fi
+
+      - name: Run health check
+        if: steps.check.outputs.skip == 'false'
+        env:
+          BASE_URL: ${{ steps.check.outputs.url }}
+        run: |
+          echo "Checking $BASE_URL/api/health";
+          set -e
+          HTTP_STATUS=$(curl -s -o /tmp/health.json -w "%{http_code}" "$BASE_URL/api/health") || true
+          echo "HTTP status: $HTTP_STATUS"
+          cat /tmp/health.json
+          if [ "$HTTP_STATUS" -ne 200 ]; then
+            echo "Health endpoint did not return 200";
+            exit 1;
+          fi
+          OK=$(jq -r '.status // empty' /tmp/health.json || echo '')
+          if [ "$OK" != "ok" ]; then
+            echo "Health JSON missing expected { \"status\": \"ok\" }";
+            exit 1;
+          fi
+
+      - name: Skip notice
+        if: steps.check.outputs.skip == 'true'
+        run: echo "Smoke test skipped because VERCEL_URL is not set. Set the repository secret and re-run the workflow."
