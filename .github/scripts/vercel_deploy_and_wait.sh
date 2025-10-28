@@ -41,8 +41,10 @@ fi
 echo "Deployment base URL: $url"
 
 # Try both /.health and /api/health (some projects expose health at /api/health)
-echo "Waiting for health endpoints to return 200 (timeout 150s)..."
-max_attempts=30
+echo "Waiting for health endpoints to return 200 (timeout 300s)..."
+# Give Vercel a short propagation window before the first health check
+sleep 10
+max_attempts=60
 attempt=1
 while [ $attempt -le $max_attempts ]; do
   for path in "/.health" "/api/health"; do
