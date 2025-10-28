@@ -24,18 +24,68 @@ out=$(npx vercel --prod --yes --token "$VERCEL_TOKEN" 2>&1) || {
 echo "Vercel CLI output:"
 echo "$out"
 
-# Prefer the 'Production:' URL line if present, otherwise prefer any vercel.app URL, otherwise the last https:// URL
-url=$(printf "%s\n" "$out" | sed -n 's/^Production:[[:space:]]*//p' | head -n1 || true)
-if [ -z "$url" ]; then
-  url=$(printf "%s\n" "$out" | grep -oE 'https://[^[:space:]]+' | grep -E '\.vercel\.app|vercel\.dev' | tail -n1 || true)
-fi
-if [ -z "$url" ]; then
-  url=$(printf "%s\n" "$out" | grep -oE 'https://[^[:space:]]+' | tail -n1 || true)
+# Attempt to extract the Vercel deployment ID from the CLI output (Inspect: .../<deploymentId>)
+inspect_url=$(printf "%s\n" "$out" | grep -m1 '^Inspect:' | sed -E 's/^Inspect:[[:space:]]*//') || true
+if [ -n "$inspect_url" ]; then
+  deployment_id=$(basename "$inspect_url")
+else
+  # Fallback: try to extract any vercel.com inspect link
+  inspect_url=$(printf "%s\n" "$out" | grep -m1 -oE 'https://vercel.com/[^[:space:]]+' || true)
+  deployment_id=$(printf "%s\n" "$inspect_url" | awk -F/ '{print $NF}')
 fi
 
-if [ -z "$url" ]; then
-  echo "ERROR: could not extract deployment URL from vercel CLI output" >&2
-  exit 1
+if [ -z "$deployment_id" ]; then
+  echo "WARNING: could not extract deployment ID from vercel CLI output; falling back to Production URL parsing"
+  url=$(printf "%s\n" "$out" | sed -n 's/^Production:[[:space:]]*//p' | head -n1 || true)
+  if [ -z "$url" ]; then
+    url=$(printf "%s\n" "$out" | grep -oE 'https://[^[:space:]]+' | grep -E '\.vercel\.app|vercel\.dev' | tail -n1 || true)
+  fi
+else
+  echo "Deployment ID: $deployment_id"
+  api_url="https://api.vercel.com/v13/deployments/$deployment_id"
+  attempts=0
+  max_api_attempts=40
+  url=""
+  until [ $attempts -ge $max_api_attempts ]; do
+    echo "Checking Vercel deployment status (attempt $((attempts+1))/$max_api_attempts)..."
+    api_out=$(curl -s -H "Authorization: Bearer $VERCEL_TOKEN" "$api_url" || true)
+    if [ -z "$api_out" ]; then
+      echo "No response from Vercel API (attempt $((attempts+1)))"
+    else
+      if command -v jq >/dev/null 2>&1; then
+        state=$(echo "$api_out" | jq -r '.state // empty')
+        ready=$(echo "$api_out" | jq -r '.ready // empty')
+      else
+        state=$(echo "$api_out" | grep -oE '"state"[[:space:]]*:[[:space:]]*"[A-Z]+"' | sed -E 's/.*:"([A-Z]+)"/\1/' || true)
+        ready=$(echo "$api_out" | grep -oE '"ready"[[:space:]]*:[[:space:]]*(true|false)' | sed -E 's/.*:(true|false)/\1/' || true)
+      fi
+      echo "Vercel API state=$state ready=$ready"
+      if [ "$state" = "READY" ] || [ "$ready" = "true" ]; then
+        if command -v jq >/dev/null 2>&1; then
+          api_url_field=$(echo "$api_out" | jq -r '.url // empty')
+        else
+          api_url_field=$(echo "$api_out" | grep -oE '"url"[[:space:]]*:[[:space:]]*"[^"]+"' | head -n1 | sed -E 's/.*:"([^"]+)"/\1/')
+        fi
+        if [ -n "$api_url_field" ]; then
+          url="https://$api_url_field"
+        else
+          url=$(printf "%s\n" "$out" | sed -n 's/^Production:[[:space:]]*//p' | head -n1 || true)
+        fi
+        break
+      fi
+      if [ "$state" = "ERROR" ] || echo "$api_out" | grep -qi 'error'; then
+        echo "Vercel reports deployment error:" >&2
+        echo "$api_out" >&2
+        exit 1
+      fi
+    fi
+    attempts=$((attempts+1))
+    sleep 5
+  done
+  if [ -z "$url" ]; then
+    echo "ERROR: deployment did not reach READY state within timeout" >&2
+    exit 1
+  fi
 fi
 
 echo "Deployment base URL: $url"
