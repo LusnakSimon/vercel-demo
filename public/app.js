@@ -6,8 +6,14 @@ const api = {
     opts.credentials = opts.credentials || 'same-origin';
     opts.headers['Content-Type'] = opts.headers['Content-Type'] || 'application/json';
     if (opts.body && typeof opts.body !== 'string') opts.body = JSON.stringify(opts.body);
+    
+    console.log('[API]', opts.method || 'GET', path, 'credentials:', opts.credentials);
+    
     const res = await fetch(path, opts);
     const json = await res.json().catch(()=>null);
+    
+    console.log('[API]', path, 'status:', res.status, 'ok:', res.ok);
+    
     if (!res.ok) throw json || { error: 'http ' + res.status };
     return json;
   }
