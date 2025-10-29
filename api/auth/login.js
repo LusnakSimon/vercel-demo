@@ -18,8 +18,13 @@ module.exports = async (req, res) => {
     const ok = await bcrypt.compare(password, user.passwordHash || '');
     if (!ok) return res.status(401).json({ error: 'invalid credentials' });
 
-    const token = jwt.sign({ sub: String(user._id), role: user.role || 'user', email: user.email }, JWT_SECRET, { expiresIn: '7d' });
-    return res.status(200).json({ ok: true, token });
+    // create server-side session and set HttpOnly cookie
+    const { createSession } = require('../../lib/sessions');
+    const sess = await createSession(user._id);
+    // set cookie (HttpOnly, SameSite=Lax)
+    const cookie = `sid=${sess.sid}; Path=/; HttpOnly; SameSite=Lax; Max-Age=${7 * 24 * 60 * 60}`;
+    res.setHeader('Set-Cookie', cookie);
+    return res.status(200).json({ ok: true, user: { _id: String(user._id), email: user.email, name: user.name, role: user.role } });
   } catch (err) {
     console.error(err);
     return res.status(500).json({ error: 'internal' });

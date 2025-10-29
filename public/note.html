@@ -3,39 +3,55 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width,initial-scale=1">
-  <title>Note Editor</title>
+  <title>Note Editor - Research Notebook</title>
   <link rel="stylesheet" href="/styles.css">
 </head>
 <body>
-  <header class="site-header">
-    <a href="/">Research Notebook</a>
-    <nav id="auth-actions" style="float:right"></nav>
-  </header>
-  <main class="container">
-    <h1 id="note-title">Note</h1>
-    <div class="row">
-      <input id="note-title-input" placeholder="Note title" style="flex:1;margin-right:8px" />
-      <div style="display:flex;gap:8px;align-items:center">
-        <button id="save-note" class="btn">Save</button>
-        <button id="delete-note" class="btn secondary" style="display:none">Delete</button>
-        <a id="cancel-link" href="/" class="btn secondary" style="margin-left:8px">Cancel</a>
+  <div class="container">
+    <header class="site-header">
+      <div class="brand">
+        <div class="logo">RN</div>
+        <div>
+          <h1>Note Editor</h1>
+          <p class="lead">Write and preview markdown notes</p>
+        </div>
+      </div>
+      <nav class="nav">
+        <a href="/">Home</a>
+        <a href="/todos.html">Todos</a>
+        <a href="/dashboard.html">Dashboard</a>
+        <span id="auth-actions"></span>
+      </nav>
+    </header>
+
+    <div class="card">
+      <div class="note-meta">
+        <input id="note-title-input" class="note-title-input" placeholder="Note title..." />
+        <div style="display:flex;gap:8px">
+          <button id="save-note" class="btn btn-primary">Save Note</button>
+          <button id="delete-note" class="btn btn-danger" style="display:none">Delete</button>
+          <a id="cancel-link" href="/" class="btn btn-secondary">Cancel</a>
+        </div>
+      </div>
+      
+      <div id="note-meta-info" class="muted small" style="margin-bottom:16px"></div>
+      
+      <div class="editor-toolbar">
+        <button id="tb-bold" class="btn btn-sm btn-secondary"><strong>B</strong></button>
+        <button id="tb-italic" class="btn btn-sm btn-secondary"><em>I</em></button>
+        <button id="tb-h1" class="btn btn-sm btn-secondary">H1</button>
+        <button id="tb-code" class="btn btn-sm btn-secondary">Code</button>
+        <button id="toggle-preview" class="btn btn-sm btn-secondary">Toggle Preview</button>
+        <span class="editor-status" id="editor-status">Ready</span>
+      </div>
+      
+      <div class="note-editor">
+        <textarea id="note-body" placeholder="Write your markdown here..."></textarea>
+        <div class="note-preview" id="note-preview"></div>
       </div>
     </div>
-    <div id="note-meta" class="muted small" style="margin-top:8px"></div>
-    <div class="editor-toolbar">
-      <button id="tb-bold" class="btn secondary">B</button>
-      <button id="tb-italic" class="btn secondary">I</button>
-      <button id="tb-h1" class="btn secondary">H1</button>
-      <button id="tb-code" class="btn secondary">Code</button>
-      <div class="editor-status" id="editor-status">Idle</div>
-      <div style="flex:1"></div>
-      <button id="toggle-preview" class="btn">Toggle Preview</button>
-    </div>
-    <div style="display:flex;gap:12px;margin-top:12px">
-      <textarea id="note-body" class="note-editor" placeholder="Write markdown here..."></textarea>
-      <div class="note-preview" id="note-preview"></div>
-    </div>
-  </main>
+  </div>
+
   <script src="/app.js"></script>
   <script>
     function qs(name){ const u=new URL(location.href); return u.searchParams.get(name); }

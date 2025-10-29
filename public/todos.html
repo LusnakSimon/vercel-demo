@@ -3,44 +3,71 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width,initial-scale=1">
-  <title>Todos</title>
+  <title>Todos - Research Notebook</title>
   <link rel="stylesheet" href="/styles.css">
 </head>
 <body>
   <div class="container">
-    <div class="header">
-      <div class="brand"><h1>Todos</h1></div>
-  <nav class="nav"><a href="/dashboard.html">Dashboard</a><a href="/projects.html">Projects</a><a href="/account.html">Account</a> <span id="auth-actions"></span></nav>
-    </div>
+    <header class="site-header">
+      <div class="brand">
+        <div class="logo">RN</div>
+        <div>
+          <h1>Todos</h1>
+          <p class="lead">Manage your tasks and todos</p>
+        </div>
+      </div>
+      <nav class="nav">
+        <a href="/">Home</a>
+        <a href="/dashboard.html">Dashboard</a>
+        <a href="/note.html">Notes</a>
+        <span id="auth-actions"></span>
+      </nav>
+    </header>
+
     <div class="grid">
       <div class="card">
         <h2>Your Todos</h2>
-        <ul id="todos-list" class="list"></ul>
+        <ul id="todos-list" class="todo-list"></ul>
       </div>
+
       <div class="card">
-        <h3>Create</h3>
+        <h3>Create New Todo</h3>
         <form id="create-form" class="stack">
-          <label>Title <input id="title" /></label>
-          <label>Description <textarea id="description"></textarea></label>
-          <button class="btn" type="submit">Create</button>
+          <div>
+            <label for="title">Title</label>
+            <input id="title" type="text" placeholder="Enter todo title..." required />
+          </div>
+          <div>
+            <label for="description">Description</label>
+            <textarea id="description" placeholder="Add details..." rows="4"></textarea>
+          </div>
+          <button class="btn btn-primary" type="submit">Create Todo</button>
         </form>
       </div>
     </div>
   </div>
+
   <!-- Modal for editing todos -->
-  <div id="modal-overlay" class="hidden" style="position:fixed;inset:0;display:flex;align-items:center;justify-content:center;background:rgba(2,6,23,0.6);z-index:999">
-    <div id="modal" class="card" style="width:520px;">
-      <h3 id="modal-title">Edit Todo</h3>
-      <form id="modal-form" class="stack">
-        <label>Title <input id="modal-title-input" required /></label>
-        <label>Description <textarea id="modal-description"></textarea></label>
-        <div class="row" style="justify-content:flex-end">
-          <button type="button" class="btn secondary" id="modal-cancel">Cancel</button>
-          <button type="submit" class="btn" id="modal-save">Save</button>
+  <div id="modal-overlay" class="modal-overlay hidden">
+    <div class="modal">
+      <h3>Edit Todo</h3>
+      <form id="modal-form" class="modal-form">
+        <div>
+          <label for="modal-title-input">Title</label>
+          <input id="modal-title-input" type="text" required />
+        </div>
+        <div>
+          <label for="modal-description">Description</label>
+          <textarea id="modal-description" rows="4"></textarea>
+        </div>
+        <div class="modal-actions">
+          <button type="button" class="btn btn-secondary" id="modal-cancel">Cancel</button>
+          <button type="submit" class="btn btn-primary" id="modal-save">Save Changes</button>
         </div>
       </form>
     </div>
   </div>
+
   <script src="/app.js"></script>
   <script>
     async function createHandler(e){
@@ -51,23 +78,24 @@
       const description = descEl.value.trim();
       if (!title) { showToast('Title required', 'error', 1800); return; }
       try{
-        document.getElementById('create-form').querySelector('button[type=submit]').disabled = true;
+        const btn = document.getElementById('create-form').querySelector('button[type=submit]');
+        btn.disabled = true;
         await api.request('/api/todos',{method:'POST', body:{title,description}});
         titleEl.value = '';
         descEl.value = '';
-        showToast('Todo created', 'success', 1200);
+        showToast('Todo created!', 'success', 1200);
         await loadTodos();
+        btn.disabled = false;
       }catch(err){
         console.warn('create todo failed', err);
         showToast('Create failed: ' + (err && (err.error || JSON.stringify(err))), 'error', 3000);
-      } finally {
         document.getElementById('create-form').querySelector('button[type=submit]').disabled = false;
       }
     }
     document.getElementById('create-form').addEventListener('submit', createHandler);
     async function loadTodos(){
       const list = document.getElementById('todos-list');
-      if (list) list.innerHTML = '<li class="muted">loading...</li>';
+      if (list) list.innerHTML = '<li class="muted">Loading...</li>';
       await loadTodosList();
     }
   </script>

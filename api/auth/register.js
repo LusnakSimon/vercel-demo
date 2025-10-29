@@ -31,9 +31,12 @@ module.exports = async (req, res) => {
   const r = await users.insertOne(user);
   user._id = r.insertedId;
   delete user.passwordHash;
-  // sign token so user can be logged in immediately after registration
-  const token = jwt.sign({ sub: String(user._id), role: user.role || 'user', email: user.email }, JWT_SECRET, { expiresIn: '7d' });
-  return res.status(201).json({ ok: true, user, token });
+  // create session so user is logged in immediately after registration
+  const { createSession } = require('../../lib/sessions');
+  const sess = await createSession(user._id);
+  const cookie = `sid=${sess.sid}; Path=/; HttpOnly; SameSite=Lax; Max-Age=${7 * 24 * 60 * 60}`;
+  res.setHeader('Set-Cookie', cookie);
+  return res.status(201).json({ ok: true, user });
   } catch (err) {
     console.error(err);
     return res.status(500).json({ error: 'internal' });

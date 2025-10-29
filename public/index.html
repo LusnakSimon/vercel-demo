@@ -3,108 +3,85 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width,initial-scale=1" />
-</head>
   <title>Collaborative Research Notebook</title>
   <link rel="stylesheet" href="/styles.css">
 </head>
 <body>
-  <header class="site-header">
-      <div class="logo">RN</div>
-    <div style="flex:1">
-      <h1>Collaborative Research Notebook</h1>
-      <p class="lead">Create, organize and share research notes within projects. API endpoints are exposed under <code>/api/*</code>.</p>
-    </div>
-    <nav class="nav">
-      <a href="/dashboard.html">Dashboard</a>
-      <a href="/todos.html">Todos</a>
-      <a href="/projects.html">Projects</a>
-      <a href="/account.html">Account</a>
-      <a href="/admin.html">Admin</a>
-      <span id="auth-actions"></span>
-    </nav>
-  </header>
-
-  <div class="grid">
-    <main>
-      <div class="card hero">
-        <h2 style="margin:0 0 8px">Welcome 👋</h2>
-  <p class="muted">Create and browse notes stored in the database. Use the links on the right to access API routes and project pages.</p>
-
-        <div class="endpoints">
-          <div class="endpoint">
-            <div>
-              <div style="font-weight:700">Health</div>
-              <div class="small">JSON health check for CI smoke tests</div>
-            </div>
-            <div><a href="/api/health" target="_blank">/api/health</a></div>
-          </div>
-
-          <div class="endpoint">
-            <div>
-              <div style="font-weight:700">Todos API</div>
-              <div class="small">Basic GET/POST route backed by the application's database</div>
-            </div>
-            <div><a href="/api/todos" target="_blank">/api/todos</a></div>
-          </div>
+  <div class="container">
+    <header class="site-header">
+      <div class="brand">
+        <div class="logo">RN</div>
+        <div>
+          <h1>Research Notebook</h1>
+          <p class="lead">Collaborative research and note-taking platform</p>
         </div>
       </div>
+      <nav class="nav">
+        <a href="/dashboard.html">Dashboard</a>
+        <a href="/todos.html">Todos</a>
+        <a href="/note.html">Notes</a>
+        <span id="auth-actions"></span>
+      </nav>
+    </header>
 
-      <div class="card" style="margin-top:16px">
-        <h3 style="margin:0 0 8px">Try the Todos</h3>
-        <p class="muted">Add simple todos below. The page will try to use <code>/api/todos</code>. If the API is unavailable (for example, when viewing locally without env vars), the client will fall back to <code>localStorage</code>.</p>
+    <div class="hero">
+      <h2>Welcome to Research Notebook</h2>
+      <p>Create and organize research notes, todos, and projects all in one place.</p>
+    </div>
 
-        <form id="todo-form" class="todo-form" style="margin-top:12px;display:flex;gap:8px">
-          <input id="todo-input" type="text" placeholder="New todo title" aria-label="New todo title" />
-          <button type="submit" class="btn">Add</button>
+    <div class="grid">
+      <div class="card">
+        <h3>Quick Start</h3>
+        <p class="muted">Add a todo to get started. Your todos are saved to the database and synced across devices.</p>
+
+        <form id="todo-form" class="stack" style="margin-top:20px">
+          <div>
+            <label for="todo-input">New Todo</label>
+            <input id="todo-input" type="text" placeholder="Enter todo title..." aria-label="New todo title" />
+          </div>
+          <button type="submit" class="btn btn-primary">Add Todo</button>
         </form>
 
-        <ul id="todo-list" class="list" style="margin-top:12px"></ul>
-
-        <script src="/app.js"></script>
-        <script>
-          // Reuse the existing client-side logic in index: delegate to loadTodosList()
-          document.addEventListener('DOMContentLoaded', ()=>{
-            renderAuthActions();
-            const form = document.getElementById('todo-form');
-            form.addEventListener('submit', async (ev)=>{
-              ev.preventDefault();
-              const input = document.getElementById('todo-input');
-              const title = (input.value||'').trim(); if(!title) return;
-              // post to API or fallback handled by existing inline logic in loadTodosList
-              try{
-                await api.request('/api/todos', { method: 'POST', body: { title } });
-              }catch(e){ /* ignore, loadTodosList will try local fallback */ }
-              input.value='';
-              loadTodosList();
-            });
-            loadTodosList();
-          });
-        </script>
-      </div>
-    </main>
-
-    <aside class="sidebar">
-      <div class="card box">
-        <h4 style="margin:0 0 8px">Quick actions</h4>
-        <div class="small">Useful links:</div>
-        <ul style="margin:10px 0 0;padding-left:18px;color:var(--muted)">
-          <li><a href="/api/health">/api/health</a></li>
-          <li><a href="/api/todos">/api/todos</a></li>
-          <li><a href="/dashboard.html">/dashboard.html</a></li>
-          <li><a href="/todos.html">/todos.html</a></li>
-          <li><a href="/projects.html">/projects.html</a></li>
-        </ul>
+        <ul id="todo-list" class="todo-list" style="margin-top:24px"></ul>
       </div>
 
-      <div class="card box" style="margin-top:14px">
-        <h4 style="margin:0 0 8px">Status</h4>
-        <div class="small">If the CI shows a failing step, check Actions logs. Deployments take a few seconds to propagate to the public edge.</div>
+      <div class="card">
+        <h3>API Endpoints</h3>
+        <p class="muted">Explore the available API routes</p>
+        <div class="stack" style="margin-top:20px">
+          <a href="/api/health" class="btn btn-secondary" target="_blank">Health Check</a>
+          <a href="/api/todos" class="btn btn-secondary" target="_blank">Todos API</a>
+          <a href="/api/notes" class="btn btn-secondary" target="_blank">Notes API</a>
+        </div>
       </div>
-    </aside>
+    </div>
+
+    <footer class="footer">
+      <p>Collaborative Research Notebook &copy; 2025</p>
+    </footer>
   </div>
 
-  <footer>
-    Collaborative Research Notebook — <span class="muted">Notes & Projects</span>
-  </footer>
+  <script src="/app.js"></script>
+  <script>
+    document.addEventListener('DOMContentLoaded', ()=>{
+      renderAuthActions();
+      const form = document.getElementById('todo-form');
+      form.addEventListener('submit', async (ev)=>{
+        ev.preventDefault();
+        const input = document.getElementById('todo-input');
+        const title = (input.value||'').trim(); 
+        if(!title) return;
+        try{
+          await api.request('/api/todos', { method: 'POST', body: { title } });
+          input.value='';
+          loadTodosList();
+          showToast('Todo added!', 'success');
+        }catch(e){ 
+          showToast('Failed to add todo', 'error');
+        }
+      });
+      loadTodosList();
+    });
+  </script>
 </body>
 </html>

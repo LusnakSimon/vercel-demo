@@ -1,9 +1,9 @@
 // Minimal client helper for auth + basic page wiring
 const api = {
-  token: () => localStorage.getItem('token') || null,
+  // sessions-based client: send credentials so cookie is sent to same-origin
   async request(path, opts = {}) {
     opts.headers = opts.headers || {};
-    if (this.token()) opts.headers['Authorization'] = 'Bearer ' + this.token();
+    opts.credentials = opts.credentials || 'same-origin';
     opts.headers['Content-Type'] = opts.headers['Content-Type'] || 'application/json';
     if (opts.body && typeof opts.body !== 'string') opts.body = JSON.stringify(opts.body);
     const res = await fetch(path, opts);
@@ -34,7 +34,8 @@ async function loginFormHandler(ev) {
     const email = document.querySelector('#login-email').value;
     const password = document.querySelector('#login-password').value;
     const res = await api.request('/api/auth/login', { method: 'POST', body: { email, password } });
-    localStorage.setItem('token', res.token);
+    // server sets HttpOnly session cookie; fetch current user
+    try { const me = await api.request('/api/auth/me'); } catch(e) {}
     showToast('Logged in', 'success', 1000);
     window.location.href = '/dashboard.html';
   } catch (err) {
@@ -50,15 +51,8 @@ async function registerFormHandler(ev) {
   const name = document.querySelector('#register-name').value;
   try {
     const res = await api.request('/api/auth/register', { method: 'POST', body: { email, password, name } });
-    // register returns { token }
-    if (res && res.token) {
-      localStorage.setItem('token', res.token);
-      window.location.href = '/dashboard.html';
-      return;
-    }
-    // fallback: attempt login
-    const login = await api.request('/api/auth/login', { method: 'POST', body: { email, password } });
-    localStorage.setItem('token', login.token);
+    // server sets session cookie; call /api/auth/me to warm UI
+    try { await api.request('/api/auth/me'); } catch(e) {}
     window.location.href = '/dashboard.html';
   } catch (err) {
     console.warn('registration failed', err);
@@ -73,13 +67,22 @@ async function loadTodosList() {
     const todos = await api.request('/api/todos');
     listEl.innerHTML = '';
     todos.forEach(t => {
-      const li = document.createElement('li'); li.className = 'list-item';
-      const desc = t.description ? `<div class="small muted">${escapeHtml(t.description)}</div>` : '';
-      li.innerHTML = `<div style="flex:1"><div class="todo-title">${escapeHtml(t.title)}</div>${desc}</div>`;
-      const actions = document.createElement('div'); actions.className='row';
-      const editBtn = document.createElement('button'); editBtn.className='btn'; editBtn.textContent='Edit'; editBtn.dataset.id = t._id;
-      const delBtn = document.createElement('button'); delBtn.className='btn secondary'; delBtn.textContent='Delete'; delBtn.style.marginLeft='8px'; delBtn.dataset.id = t._id;
-      actions.appendChild(editBtn); actions.appendChild(delBtn);
+      const li = document.createElement('li');
+      li.className = 'todo-item' + (t.done ? ' done' : '');
+      const desc = t.description ? `<div class="todo-description">${escapeHtml(t.description)}</div>` : '';
+      li.innerHTML = `<div class="todo-content"><div class="todo-title">${escapeHtml(t.title)}</div>${desc}</div>`;
+      const actions = document.createElement('div');
+      actions.className = 'todo-actions';
+      const editBtn = document.createElement('button');
+      editBtn.className = 'btn btn-sm btn-secondary';
+      editBtn.textContent = 'Edit';
+      editBtn.dataset.id = t._id;
+      const delBtn = document.createElement('button');
+      delBtn.className = 'btn btn-sm btn-danger';
+      delBtn.textContent = 'Delete';
+      delBtn.dataset.id = t._id;
+      actions.appendChild(editBtn);
+      actions.appendChild(delBtn);
       li.appendChild(actions);
       listEl.appendChild(li);
     });
@@ -145,8 +148,6 @@ document.addEventListener('submit', async (ev) => {
   }
 });
 
-document.getElementById('modal-cancel') && document.getElementById('modal-cancel').addEventListener('click', ()=>{ closeTodoModal(); });
-
 // Notes helpers
 async function loadProjectNotes(projectId, q) {
   const listEl = document.querySelector('#notes-list');
@@ -170,43 +171,38 @@ function escapeHtml(s){ if(!s) return ''; return String(s).replace(/[&<>"']/g, c
 document.addEventListener('DOMContentLoaded', ()=>{
   const loginForm = document.querySelector('#login-form');
   if (loginForm) loginForm.addEventListener('submit', loginFormHandler);
-    const registerForm = document.querySelector('#register-form');
-    if (registerForm) registerForm.addEventListener('submit', registerFormHandler);
+  const registerForm = document.querySelector('#register-form');
+  if (registerForm) registerForm.addEventListener('submit', registerFormHandler);
+  
+  // Initialize modal cancel button
+  const modalCancel = document.getElementById('modal-cancel');
+  if (modalCancel) modalCancel.addEventListener('click', ()=>{ closeTodoModal(); });
+  
   loadTodosList();
   renderAuthActions();
 });
 
-function signOut() {
-  localStorage.removeItem('token');
+async function signOut() {
+  try {
+    await api.request('/api/auth/logout', { method: 'POST' });
+  } catch(e) {
+    console.warn('logout request failed', e);
+  }
   // redirect to home
   window.location.href = '/';
 }
 
 async function renderAuthActions() {
-  const container = document.getElementById('auth-actions');
-  if (!container) return;
-  container.innerHTML = '';
-  const token = api.token();
-  if (!token) {
-    const a = document.createElement('a'); a.href='/account.html'; a.textContent='Account'; a.style='color:var(--muted);text-decoration:none;margin-left:8px';
-    container.appendChild(a);
-    return;
-  }
-  // try fetch user
+  const el = document.querySelector('#auth-actions');
+  if (!el) return;
   try {
-    const res = await fetch('/api/auth/me', { headers: { Authorization: 'Bearer ' + token } });
-    if (!res.ok) throw new Error('not ok');
-    const body = await res.json();
-    const name = (body && body.user && (body.user.name || body.user.email)) || 'Me';
-    const span = document.createElement('span'); span.className='muted'; span.textContent = name; span.style='margin-right:8px';
-    const btn = document.createElement('button'); btn.textContent='Sign out'; btn.className='btn secondary'; btn.style='margin-left:8px';
-    btn.addEventListener('click', signOut);
-    container.appendChild(span); container.appendChild(btn);
-  } catch (e) {
-    // fallback: clear token and show account link
-    console.warn('failed to fetch /api/auth/me', e);
-    localStorage.removeItem('token');
-    const a = document.createElement('a'); a.href='/account.html'; a.textContent='Account'; a.style='color:var(--muted);text-decoration:none;margin-left:8px';
-    container.appendChild(a);
+    const res = await api.request('/api/auth/me');
+    if (res && res.user) {
+      el.innerHTML = `<span class="muted">Hi, ${escapeHtml(res.user.name||res.user.email)}</span> <button class="btn btn-sm btn-secondary" onclick="signOut()">Sign Out</button>`;
+    } else {
+      el.innerHTML = `<a class="btn btn-sm btn-primary" href="/login.html">Login</a>`;
+    }
+  } catch (err) {
+    el.innerHTML = `<a class="btn btn-sm btn-primary" href="/login.html">Login</a>`;
   }
 }
