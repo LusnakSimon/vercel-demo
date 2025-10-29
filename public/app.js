@@ -68,4 +68,40 @@ document.addEventListener('DOMContentLoaded', ()=>{
     const registerForm = document.querySelector('#register-form');
     if (registerForm) registerForm.addEventListener('submit', registerFormHandler);
   loadTodosList();
+  renderAuthActions();
 });
+
+function signOut() {
+  localStorage.removeItem('token');
+  // redirect to home
+  window.location.href = '/';
+}
+
+async function renderAuthActions() {
+  const container = document.getElementById('auth-actions');
+  if (!container) return;
+  container.innerHTML = '';
+  const token = api.token();
+  if (!token) {
+    const a = document.createElement('a'); a.href='/account.html'; a.textContent='Account'; a.style='color:var(--muted);text-decoration:none;margin-left:8px';
+    container.appendChild(a);
+    return;
+  }
+  // try fetch user
+  try {
+    const res = await fetch('/api/auth/me', { headers: { Authorization: 'Bearer ' + token } });
+    if (!res.ok) throw new Error('not ok');
+    const body = await res.json();
+    const name = (body && body.user && (body.user.name || body.user.email)) || 'Me';
+    const span = document.createElement('span'); span.className='muted'; span.textContent = name; span.style='margin-right:8px';
+    const btn = document.createElement('button'); btn.textContent='Sign out'; btn.className='btn secondary'; btn.style='margin-left:8px';
+    btn.addEventListener('click', signOut);
+    container.appendChild(span); container.appendChild(btn);
+  } catch (e) {
+    // fallback: clear token and show account link
+    console.warn('failed to fetch /api/auth/me', e);
+    localStorage.removeItem('token');
+    const a = document.createElement('a'); a.href='/account.html'; a.textContent='Account'; a.style='color:var(--muted);text-decoration:none;margin-left:8px';
+    container.appendChild(a);
+  }
+}
