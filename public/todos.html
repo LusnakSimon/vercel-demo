@@ -27,11 +27,49 @@
       </div>
     </div>
   </div>
+  <!-- Modal for editing todos -->
+  <div id="modal-overlay" class="hidden" style="position:fixed;inset:0;display:flex;align-items:center;justify-content:center;background:rgba(2,6,23,0.6);z-index:999">
+    <div id="modal" class="card" style="width:520px;">
+      <h3 id="modal-title">Edit Todo</h3>
+      <form id="modal-form" class="stack">
+        <label>Title <input id="modal-title-input" required /></label>
+        <label>Description <textarea id="modal-description"></textarea></label>
+        <div class="row" style="justify-content:flex-end">
+          <button type="button" class="btn secondary" id="modal-cancel">Cancel</button>
+          <button type="submit" class="btn" id="modal-save">Save</button>
+        </div>
+      </form>
+    </div>
+  </div>
   <script src="/app.js"></script>
   <script>
-    async function createHandler(e){ e.preventDefault(); const title=document.getElementById('title').value; const description=document.getElementById('description').value; try{ await api.request('/api/todos',{method:'POST', body:{title,description}}); loadTodos(); }catch(err){ alert('Create failed: '+(err.error||JSON.stringify(err))); } }
+    async function createHandler(e){
+      e.preventDefault();
+      const titleEl = document.getElementById('title');
+      const descEl = document.getElementById('description');
+      const title = titleEl.value.trim();
+      const description = descEl.value.trim();
+      if (!title) { showToast('Title required', 'error', 1800); return; }
+      try{
+        document.getElementById('create-form').querySelector('button[type=submit]').disabled = true;
+        await api.request('/api/todos',{method:'POST', body:{title,description}});
+        titleEl.value = '';
+        descEl.value = '';
+        showToast('Todo created', 'success', 1200);
+        await loadTodos();
+      }catch(err){
+        console.warn('create todo failed', err);
+        showToast('Create failed: ' + (err && (err.error || JSON.stringify(err))), 'error', 3000);
+      } finally {
+        document.getElementById('create-form').querySelector('button[type=submit]').disabled = false;
+      }
+    }
     document.getElementById('create-form').addEventListener('submit', createHandler);
-    async function loadTodos(){ await loadTodosList(); }
+    async function loadTodos(){
+      const list = document.getElementById('todos-list');
+      if (list) list.innerHTML = '<li class="muted">loading...</li>';
+      await loadTodosList();
+    }
   </script>
 </body>
 </html>

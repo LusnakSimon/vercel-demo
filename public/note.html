@@ -22,9 +22,18 @@
       </div>
     </div>
     <div id="note-meta" class="muted small" style="margin-top:8px"></div>
+    <div class="editor-toolbar">
+      <button id="tb-bold" class="btn secondary">B</button>
+      <button id="tb-italic" class="btn secondary">I</button>
+      <button id="tb-h1" class="btn secondary">H1</button>
+      <button id="tb-code" class="btn secondary">Code</button>
+      <div class="editor-status" id="editor-status">Idle</div>
+      <div style="flex:1"></div>
+      <button id="toggle-preview" class="btn">Toggle Preview</button>
+    </div>
     <div style="display:flex;gap:12px;margin-top:12px">
-      <textarea id="note-body" style="flex:1;min-height:320px" placeholder="Write markdown here..."></textarea>
-      <div style="flex:1;min-height:320px;border:1px solid var(--muted);padding:12px;overflow:auto;background:#fff" id="note-preview"></div>
+      <textarea id="note-body" class="note-editor" placeholder="Write markdown here..."></textarea>
+      <div class="note-preview" id="note-preview"></div>
     </div>
   </main>
   <script src="/app.js"></script>
@@ -53,6 +62,12 @@
         const status = document.getElementById('editor-status'); if(status) status.textContent = 'Editing...';
         clearTimeout(autosaveTimeout); autosaveTimeout = setTimeout(saveDraftToLocal, 1200);
       });
+      // toolbar actions
+      document.getElementById('tb-bold').addEventListener('click', ()=> wrapSelection(bodyEl, '**'));
+      document.getElementById('tb-italic').addEventListener('click', ()=> wrapSelection(bodyEl, '*'));
+      document.getElementById('tb-h1').addEventListener('click', ()=> prependLine(bodyEl, '# '));
+      document.getElementById('tb-code').addEventListener('click', ()=> wrapSelection(bodyEl, '```\n', '\n```'));
+      document.getElementById('toggle-preview').addEventListener('click', ()=>{ document.getElementById('note-preview').classList.toggle('hidden'); });
       document.getElementById('save-note').addEventListener('click', save);
       // restore draft if present
       const draftRaw = localStorage.getItem(draftKey());
@@ -107,6 +122,9 @@
         location.href = '/project-notes.html?projectId=' + encodeURIComponent(res.projectId || projectId || '');
       }catch(e){ if(window.showToast) showToast('Save failed: ' + (e.error||JSON.stringify(e)), 'error', 3000); }
     }
+
+  function wrapSelection(el, before, after){ if(typeof after==='undefined') after=before; const start=el.selectionStart, end=el.selectionEnd; const val=el.value; const selected=val.slice(start,end); el.value = val.slice(0,start)+before+selected+after+val.slice(end); el.focus(); el.selectionStart = start + before.length; el.selectionEnd = end + before.length; el.dispatchEvent(new Event('input')); }
+  function prependLine(el, prefix){ const start=el.selectionStart, val=el.value; const lineStart = val.lastIndexOf('\n', start-1)+1; el.value = val.slice(0,lineStart)+prefix+val.slice(lineStart); el.focus(); el.dispatchEvent(new Event('input')); }
 
     // load marked.js from CDN for markdown preview if not present
     (function(){
