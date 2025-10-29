@@ -1,0 +1,32 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>Projects</title>
+  <link rel="stylesheet" href="/styles.css">
+</head>
+<body>
+  <div class="container">
+    <div class="header">
+      <div class="brand"><h1>Projects</h1></div>
+      <nav class="nav"><a href="/dashboard.html">Dashboard</a><a href="/todos.html">Todos</a><a href="/account.html">Account</a></nav>
+    </div>
+    <div class="card">
+      <h2>Your Projects</h2>
+      <div id="projects-list" class="list muted">Loading…</div>
+    </div>
+  </div>
+  <script src="/app.js"></script>
+  <script>
+    async function load() {
+      try {
+        const projects = await api.request('/api/projects');
+        const el = document.getElementById('projects-list'); el.innerHTML = '';
+        projects.forEach(p=>{ const d=document.createElement('div'); d.className='list-item'; d.innerHTML=`<div>${p.name}</div><div class="small muted">owner: ${p.ownerId}</div>`; el.appendChild(d); })
+      } catch(e){ document.getElementById('projects-list').innerHTML='Unable to load projects'; }
+    }
+    load();
+  </script>
+</body>
+</html>

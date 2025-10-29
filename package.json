@@ -1,6 +1,7 @@
 {
   "scripts": {
-    "seed": "node scripts/seed.js"
+    "seed": "node scripts/seed.js",
+    "test": "node scripts/test.js"
   },
   "dependencies": {
     "mongodb": "^6.20.0",

@@ -1,0 +1,26 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>Account</title>
+  <link rel="stylesheet" href="/styles.css">
+</head>
+<body>
+  <div class="container">
+    <div class="header">
+      <div class="brand"><h1>Account</h1></div>
+      <nav class="nav"><a href="/dashboard.html">Dashboard</a><a href="/projects.html">Projects</a><a href="/todos.html">Todos</a></nav>
+    </div>
+    <div class="card">
+      <h2>Login</h2>
+      <form id="login-form" class="stack">
+        <label>Email <input id="login-email" type="email" required /></label>
+        <label>Password <input id="login-password" type="password" required /></label>
+        <div class="row"><button class="btn" type="submit">Login</button><a class="btn secondary" href="/dashboard.html">Skip</a></div>
+      </form>
+    </div>
+  </div>
+  <script src="/app.js"></script>
+</body>
+</html>
