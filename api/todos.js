@@ -1,47 +1,51 @@
-const fs = require('fs');
+const { connect } = require('../lib/mongo');
+const { ObjectId } = require('mongodb');
 
-// Simple Vercel Serverless handler for GET/POST /todos
-// Uses a local file store (todos.local.json) so no external services or secrets are required.
-
-const TODO_FILE = './todos.local.json';
-
-function readTodos() {
-  if (!fs.existsSync(TODO_FILE)) return [];
-  try {
-    const body = fs.readFileSync(TODO_FILE, 'utf8');
-    return JSON.parse(body || '[]');
-  } catch (e) {
-    console.error('failed to read todos', e);
-    return [];
-  }
-}
-
-function writeTodos(items) {
-  try {
-    fs.writeFileSync(TODO_FILE, JSON.stringify(items, null, 2));
-    return true;
-  } catch (e) {
-    console.error('failed to write todos', e);
-    return false;
-  }
-}
-
+// RESTful todos handler using MongoDB
 module.exports = async (req, res) => {
   try {
+    const db = await connect();
+    const todos = db.collection('todos');
+
     if (req.method === 'GET') {
-      const items = readTodos();
-      res.status(200).json(items);
-      return;
+      // GET /api/todos or /api/todos?id=...
+      const { id, projectId } = req.query || {};
+      if (id) {
+        const doc = await todos.findOne({ _id: new ObjectId(id) });
+        return res.status(200).json(doc || {});
+      }
+      const q = projectId ? { projectId } : {};
+      const list = await todos.find(q).sort({ createdAt: -1 }).toArray();
+      return res.status(200).json(list);
     }
 
     if (req.method === 'POST') {
-      const items = req.body || [];
-      const ok = writeTodos(items);
-      if (!ok) return res.status(500).json({ error: 'failed to write todos' });
+      const { title, description, projectId, ownerId } = req.body || {};
+      if (!title) return res.status(400).json({ error: 'title required' });
+      const doc = { title, description: description || '', projectId: projectId || null, ownerId: ownerId || null, done: false, createdAt: new Date() };
+      const r = await todos.insertOne(doc);
+      doc._id = r.insertedId;
+      return res.status(201).json(doc);
+    }
+
+    if (req.method === 'PUT' || req.method === 'PATCH') {
+      const { id } = req.query || {};
+      if (!id) return res.status(400).json({ error: 'id required' });
+      const updates = req.body || {};
+      updates.updatedAt = new Date();
+      await todos.updateOne({ _id: new ObjectId(id) }, { $set: updates });
+      const updated = await todos.findOne({ _id: new ObjectId(id) });
+      return res.status(200).json(updated);
+    }
+
+    if (req.method === 'DELETE') {
+      const { id } = req.query || {};
+      if (!id) return res.status(400).json({ error: 'id required' });
+      await todos.deleteOne({ _id: new ObjectId(id) });
       return res.status(200).json({ ok: true });
     }
 
-    res.setHeader('Allow', 'GET, POST');
+    res.setHeader('Allow', 'GET, POST, PUT, PATCH, DELETE');
     res.status(405).end('Method Not Allowed');
   } catch (err) {
     console.error(err);
