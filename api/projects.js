@@ -19,10 +19,13 @@ module.exports = async (req, res) => {
     }
 
     if (req.method === 'POST') {
-      if (!authUser) return res.status(401).json({ error: 'unauthenticated' });
+      const auth = require('../lib/auth');
+      const user = await auth.requireAuth(req, res);
+      if (!user) return null; // response already sent by requireAuth
       const { name } = req.body || {};
-      if (!name) return res.status(400).json({ error: 'name required' });
-      const doc = { name, ownerId: String(authUser._id), createdAt: new Date() };
+      const { requireString } = require('../lib/validate');
+      if (!requireString(name, 2)) return res.status(400).json({ error: 'name required (min 2 chars)' });
+      const doc = { name: name.trim(), ownerId: String(user._id), createdAt: new Date() };
       const r = await projects.insertOne(doc);
       doc._id = r.insertedId;
       return res.status(201).json(doc);

@@ -5,7 +5,10 @@ module.exports = async (req, res) => {
   if (req.method !== 'POST') return res.status(405).end('Method Not Allowed');
   try {
     const { email, password, name } = req.body || {};
+    const { isEmail, requireString } = require('../../lib/validate');
     if (!email || !password) return res.status(400).json({ error: 'email and password required' });
+    if (!isEmail(email)) return res.status(400).json({ error: 'invalid email' });
+    if (!requireString(password, 8)) return res.status(400).json({ error: 'password too short (min 8)' });
 
     const db = await connect();
     const users = db.collection('users');
