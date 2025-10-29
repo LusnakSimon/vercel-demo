@@ -4,217 +4,106 @@
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width,initial-scale=1" />
   <title>Vercel Demo — vercel-demo</title>
-  <style>
-    :root{
-      --bg:#0f1720;
-      --card:#0b1220;
-      --muted:#94a3b8;
-      <link rel="stylesheet" href="/styles.css">
-      <header>
-        <div class="logo">VD</div>
-        <div style="flex:1">
-          <h1>vercel-demo</h1>
-          <p class="lead">A minimal demo site — API endpoints are exposed under <code>/api/*</code>.</p>
-        </div>
-        <nav style="display:flex;gap:10px;align-items:center">
-          <a href="/dashboard.html" style="color:var(--muted);text-decoration:none">Dashboard</a>
-          <a href="/todos.html" style="color:var(--muted);text-decoration:none">Todos</a>
-          <a href="/projects.html" style="color:var(--muted);text-decoration:none">Projects</a>
-          <a href="/account.html" style="color:var(--muted);text-decoration:none">Account</a>
-          <a href="/admin.html" style="color:var(--muted);text-decoration:none">Admin</a>
-          <span id="auth-actions"></span>
-        </nav>
-      </header>
+  <link rel="stylesheet" href="/styles.css">
+</head>
+<body>
+  <header class="site-header">
+    <div class="logo">VD</div>
+    <div style="flex:1">
+      <h1>vercel-demo</h1>
+      <p class="lead">A minimal demo site — API endpoints are exposed under <code>/api/*</code>.</p>
+    </div>
+    <nav class="nav">
+      <a href="/dashboard.html">Dashboard</a>
+      <a href="/todos.html">Todos</a>
+      <a href="/projects.html">Projects</a>
+      <a href="/account.html">Account</a>
+      <a href="/admin.html">Admin</a>
+      <span id="auth-actions"></span>
+    </nav>
+  </header>
 
-      <div class="grid">
-        <main>
-          <div class="card hero">
-            <h2 style="margin:0 0 8px">Welcome 👋</h2>
-            <p class="muted">This demo shows a serverless API on Vercel and a small CI/CD flow. Use the links on the right to exercise API routes.</p>
+  <div class="grid">
+    <main>
+      <div class="card hero">
+        <h2 style="margin:0 0 8px">Welcome 👋</h2>
+        <p class="muted">This demo shows a serverless API on Vercel and a small CI/CD flow. Use the links on the right to exercise API routes.</p>
 
-            <div class="endpoints">
-              <div class="endpoint">
-                <div>
-                  <div style="font-weight:700">Health</div>
-                  <div class="small">JSON health check for CI smoke tests</div>
-                </div>
-                <div><a href="/api/health" target="_blank">/api/health</a></div>
-              </div>
-
-              <div class="endpoint">
-                <div>
-                  <div style="font-weight:700">Todos API</div>
-                  <div class="small">Basic GET/POST demo route backed by an in-memory store</div>
-                </div>
-                <div><a href="/api/todos" target="_blank">/api/todos</a></div>
-              </div>
-
+        <div class="endpoints">
+          <div class="endpoint">
+            <div>
+              <div style="font-weight:700">Health</div>
+              <div class="small">JSON health check for CI smoke tests</div>
             </div>
+            <div><a href="/api/health" target="_blank">/api/health</a></div>
           </div>
 
-          <div class="card" style="margin-top:16px">
-            <h3 style="margin:0 0 8px">Try the Todos</h3>
-            <p class="muted">Add simple todos below. The page will try to use <code>/api/todos</code>. If the API is unavailable (for example, when viewing locally), the client will fall back to <code>localStorage</code>.</p>
-
-            <form id="todo-form" class="todo-form" style="margin-top:12px;display:flex;gap:8px">
-              <input id="todo-input" type="text" placeholder="New todo title" style="flex:1;padding:10px;border-radius:8px;border:1px solid rgba(255,255,255,0.04);background:transparent;color:inherit" aria-label="New todo title" />
-              <button type="submit" style="padding:10px 14px;border-radius:8px;border:0;background:linear-gradient(90deg,var(--accent),#3b82f6);color:#02122a;font-weight:600">Add</button>
-            </form>
-
-            <ul id="todo-list" class="todo-list" style="list-style:none;padding:0;margin:12px 0 0;display:flex;flex-direction:column;gap:8px">
-              <li class="small muted">Loading todos…</li>
-            </ul>
-
-            <style>
-              .todo-list .todo-item{display:flex;align-items:center;justify-content:space-between;padding:10px;border-radius:8px;background:rgba(255,255,255,0.02)}
-              .todo-list .todo-item .title{font-weight:600}
-              .todo-list .todo-item .meta{font-size:12px;color:var(--muted)}
-              .todo-empty{color:var(--muted);font-size:14px}
-            </style>
-
-            <script>
-              (function(){
-                const api = '/api/todos';
-                const listEl = document.getElementById('todo-list');
-                const form = document.getElementById('todo-form');
-                const input = document.getElementById('todo-input');
-
-                function fromLocal(){
-                  try{ return JSON.parse(localStorage.getItem('vercel-demo-todos')||'[]') }catch(e){return[]}
-                }
-                function toLocal(items){
-                  try{ localStorage.setItem('vercel-demo-todos', JSON.stringify(items)) }catch(e){}
-                }
-
-                function render(items){
-                  listEl.innerHTML = '';
-                  if(!items || items.length===0){
-                    const li = document.createElement('li'); li.className='todo-empty muted'; li.textContent='No todos yet.'; listEl.appendChild(li); return;
-                  }
-                  // pagination: show first pageSize items with Load more
-                  const pageSize = 5;
-                  const max = Math.min(items.length, render._shownCount || pageSize);
-                  items.slice(0, max).forEach((t,idx)=>{
-                    const li = document.createElement('li'); li.className='todo-item';
-                    const left = document.createElement('div');
-                    const title = document.createElement('div'); title.className='title'; title.textContent = t.title || t.text || ('Todo '+(idx+1));
-                    // in-place editing (double-click to edit)
-                    title.addEventListener('dblclick', ()=>{
-                      title.contentEditable = 'true';
-                      title.focus();
-                    });
-                    title.addEventListener('blur', async ()=>{
-                      title.contentEditable = 'false';
-                      const newText = title.textContent && title.textContent.trim();
-                      if(!newText) return;
-                      // if item has _id, try to PATCH the API; otherwise update localStorage
-                      if(t._id){
-                        try{
-                          await fetch('/api/todos?id='+encodeURIComponent(t._id), {method:'PATCH', headers:{'content-type':'application/json'}, body: JSON.stringify({title:newText})});
-                          // optimistic UI update: nothing else needed
-                        }catch(e){
-                          console.warn('update failed, saving locally', e);
-                          const saved = fromLocal();
-                          const idx = saved.findIndex(x=>x.createdAt===t.createdAt || x.title===t.title);
-                          if(idx>=0){ saved[idx].title = newText; toLocal(saved); }
-                        }
-                      }else{
-                        const saved = fromLocal();
-                        const idx = saved.findIndex(x=>x.createdAt===t.createdAt || x.title===t.title);
-                        if(idx>=0){ saved[idx].title = newText; toLocal(saved); }
-                      }
-                    });
-                    const meta = document.createElement('div'); meta.className='meta'; meta.textContent = (t.createdAt? new Date(t.createdAt).toLocaleString() : '');
-                    left.appendChild(title); if(meta.textContent) left.appendChild(meta);
-                    const right = document.createElement('div');
-                    const doneBtn = document.createElement('button'); doneBtn.textContent='✓'; doneBtn.title='Mark done (local)'; doneBtn.style= 'margin-left:8px;border-radius:8px;padding:6px 8px;border:0;background:rgba(255,255,255,0.04);color:var(--muted)';
-                    doneBtn.addEventListener('click',()=>{
-                      // local-only mark as done (no API delete implemented)
-                      li.style.opacity=0.5; li.style.textDecoration='line-through';
-                    });
-                    right.appendChild(doneBtn);
-                    li.appendChild(left); li.appendChild(right); listEl.appendChild(li);
-                  })
-                  // show load more if there are more items
-                  const moreExisting = document.getElementById('load-more-btn');
-                  if(moreExisting) moreExisting.remove();
-                  if(items.length > max){
-                    const btn = document.createElement('button'); btn.id='load-more-btn'; btn.className='btn secondary'; btn.textContent = 'Load more';
-                    btn.addEventListener('click', ()=>{ render._shownCount = Math.min(items.length, (render._shownCount || pageSize) + pageSize); render(items); });
-                    listEl.parentNode.appendChild(btn);
-                  }
-                }
-
-                async function load(){
-                  try{
-                    const res = await fetch(api,{cache:'no-store'});
-                    if(!res.ok) throw new Error('bad');
-                    const body = await res.json();
-                    const items = Array.isArray(body) ? body : (body.todos || body.items || []);
-                    render(items);
-                    toLocal(items);
-                  }catch(e){
-                    // fallback
-                    const items = fromLocal();
-                    render(items);
-                  }
-                }
-
-                form.addEventListener('submit', async function(ev){
-                  ev.preventDefault();
-                  const title = input.value && input.value.trim(); if(!title) return;
-                  const newItem = {title, createdAt: new Date().toISOString()};
-                  // optimistic UI
-                  const current = (function(){
-                    const nodes = Array.from(listEl.querySelectorAll('.todo-item')).map(n=>({title:n.querySelector('.title').textContent}));
-                    return nodes;
-                  })();
-                  current.unshift(newItem); render(current);
-                  input.value='';
-                  try{
-                    const res = await fetch(api, {method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify(newItem)});
-                    if(!res.ok) throw new Error('post failed');
-                    const created = await res.json();
-                    // reload to get canonical list
-                    await load();
-                  }catch(err){
-                    // save to localStorage as fallback
-                    const saved = fromLocal(); saved.unshift(newItem); toLocal(saved);
-                    // leave optimistic UI
-                  }
-                });
-
-                // initial
-                load();
-              })();
-            </script>
+          <div class="endpoint">
+            <div>
+              <div style="font-weight:700">Todos API</div>
+              <div class="small">Basic GET/POST demo route backed by a database</div>
+            </div>
+            <div><a href="/api/todos" target="_blank">/api/todos</a></div>
           </div>
-        </main>
-
-        <aside class="sidebar">
-          <div class="card box">
-            <h4 style="margin:0 0 8px">Quick actions</h4>
-            <div class="small">Useful links:</div>
-            <ul style="margin:10px 0 0;padding-left:18px;color:var(--muted)">
-              <li><a href="/api/health">/api/health</a></li>
-              <li><a href="/api/todos">/api/todos</a></li>
-              <li><a href="/dashboard.html">/dashboard.html</a></li>
-              <li><a href="/todos.html">/todos.html</a></li>
-              <li><a href="/projects.html">/projects.html</a></li>
-            </ul>
-          </div>
-
-          <div class="card box" style="margin-top:14px">
-            <h4 style="margin:0 0 8px">Status</h4>
-            <div class="small">If the CI shows a failing step, check Actions logs. Deployments take a few seconds to propagate to the public edge.</div>
-          </div>
-        </aside>
+        </div>
       </div>
 
-      <footer>
-        Built for demonstration — <span class="muted">vercel-demo</span>
-      </footer>
-    </div>
-  </body>
-</html>
+      <div class="card" style="margin-top:16px">
+        <h3 style="margin:0 0 8px">Try the Todos</h3>
+        <p class="muted">Add simple todos below. The page will try to use <code>/api/todos</code>. If the API is unavailable (for example, when viewing locally without env vars), the client will fall back to <code>localStorage</code>.</p>
+
+        <form id="todo-form" class="todo-form" style="margin-top:12px;display:flex;gap:8px">
+          <input id="todo-input" type="text" placeholder="New todo title" aria-label="New todo title" />
+          <button type="submit" class="btn">Add</button>
+        </form>
+
+        <ul id="todo-list" class="list" style="margin-top:12px"></ul>
+
+        <script src="/app.js"></script>
+        <script>
+          // Reuse the existing client-side logic in index: delegate to loadTodosList()
+          document.addEventListener('DOMContentLoaded', ()=>{
+            renderAuthActions();
+            const form = document.getElementById('todo-form');
+            form.addEventListener('submit', async (ev)=>{
+              ev.preventDefault();
+              const input = document.getElementById('todo-input');
+              const title = (input.value||'').trim(); if(!title) return;
+              // post to API or fallback handled by existing inline logic in loadTodosList
+              try{
+                await api.request('/api/todos', { method: 'POST', body: { title } });
+              }catch(e){ /* ignore, loadTodosList will try local fallback */ }
+              input.value='';
+              loadTodosList();
+            });
+            loadTodosList();
+          });
+        </script>
+      </div>
+    </main>
+
+    <aside class="sidebar">
+      <div class="card box">
+        <h4 style="margin:0 0 8px">Quick actions</h4>
+        <div class="small">Useful links:</div>
+        <ul style="margin:10px 0 0;padding-left:18px;color:var(--muted)">
+          <li><a href="/api/health">/api/health</a></li>
+          <li><a href="/api/todos">/api/todos</a></li>
+          <li><a href="/dashboard.html">/dashboard.html</a></li>
+          <li><a href="/todos.html">/todos.html</a></li>
+          <li><a href="/projects.html">/projects.html</a></li>
+        </ul>
+      </div>
+
+      <div class="card box" style="margin-top:14px">
+        <h4 style="margin:0 0 8px">Status</h4>
+        <div class="small">If the CI shows a failing step, check Actions logs. Deployments take a few seconds to propagate to the public edge.</div>
+      </div>
+    </aside>
+  </div>
+
+  <footer>
+    Built for demonstration — <span class="muted">vercel-demo</span>
+  </footer>
+</body>
 </html>
