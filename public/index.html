@@ -59,10 +59,17 @@
     <div class="container">
       <header>
         <div class="logo">VD</div>
-        <div>
+        <div style="flex:1">
           <h1>vercel-demo</h1>
           <p class="lead">A minimal demo site — API endpoints are exposed under <code>/api/*</code>.</p>
         </div>
+        <nav style="display:flex;gap:10px;align-items:center">
+          <a href="/dashboard.html" style="color:var(--muted);text-decoration:none">Dashboard</a>
+          <a href="/todos.html" style="color:var(--muted);text-decoration:none">Todos</a>
+          <a href="/projects.html" style="color:var(--muted);text-decoration:none">Projects</a>
+          <a href="/account.html" style="color:var(--muted);text-decoration:none">Account</a>
+          <a href="/admin.html" style="color:var(--muted);text-decoration:none">Admin</a>
+        </nav>
       </header>
 
       <div class="grid">
@@ -200,6 +207,9 @@
             <ul style="margin:10px 0 0;padding-left:18px;color:var(--muted)">
               <li><a href="/api/health">/api/health</a></li>
               <li><a href="/api/todos">/api/todos</a></li>
+              <li><a href="/dashboard.html">/dashboard.html</a></li>
+              <li><a href="/todos.html">/todos.html</a></li>
+              <li><a href="/projects.html">/projects.html</a></li>
             </ul>
           </div>
 
