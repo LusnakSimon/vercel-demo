@@ -4,6 +4,30 @@
 }
 *{box-sizing:border-box}
 body{font-family:Inter,system-ui,Segoe UI,Roboto,'Helvetica Neue',Arial; margin:0; background:linear-gradient(180deg,var(--bg),#071022); color:#e6eef8}
+.site-header{display:flex;align-items:center;gap:16px;margin-bottom:28px;padding:20px 0}
+.logo{width:56px;height:56px;background:linear-gradient(135deg,var(--accent),#3b82f6);border-radius:12px;display:flex;align-items:center;justify-content:center;font-weight:700;color:#02203d}
+.brand h1{margin:0;font-size:20px}
+.lead{margin:6px 0 0;color:var(--muted)}
+.nav{display:flex;gap:12px;align-items:center}
+.nav a{color:var(--muted);text-decoration:none;padding:8px;border-radius:8px}
+.nav a:hover{background:rgba(255,255,255,0.03);color:#fff}
+.card{background:linear-gradient(180deg, rgba(255,255,255,0.02), rgba(255,255,255,0.01)); padding:16px;border-radius:10px;box-shadow:0 6px 18px rgba(2,6,23,0.6)}
+.hero{padding:28px;border-radius:14px;background:linear-gradient(180deg,rgba(255,255,255,0.02),var(--surface))}
+.grid{display:grid;grid-template-columns:1fr 320px;gap:16px}
+.container{max-width:980px;margin:24px auto;padding:16px}
+.todo-form input, .todo-form button{transition:all .18s ease}
+.btn{background:var(--accent);color:#032; padding:10px 12px;border-radius:8px;border:none;cursor:pointer}
+.btn.secondary{background:transparent;border:1px solid rgba(255,255,255,0.06);color:var(--muted)}
+.todo-list .todo-item{display:flex;align-items:center;justify-content:space-between;padding:10px;border-radius:8px;background:rgba(255,255,255,0.02)}
+.todo-list .title{font-weight:600}
+.todo-list .meta{font-size:12px;color:var(--muted)}
+
+/* subtle animations */
+.card, .hero {transition: transform .18s ease, box-shadow .18s ease}
+.card:hover, .hero:hover {transform: translateY(-4px);box-shadow:0 10px 30px rgba(2,6,23,0.7)}
+
+/* responsive tweaks */
+@media (max-width:900px){.grid{grid-template-columns:1fr}.nav{display:none}}
 .container{max-width:980px;margin:24px auto;padding:16px}
 .header{display:flex;align-items:center;justify-content:space-between;margin-bottom:18px}
 .brand{display:flex;gap:12px;align-items:center}
