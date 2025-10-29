@@ -15,9 +15,13 @@
     <h1 id="note-title">Note</h1>
     <div class="row">
       <input id="note-title-input" placeholder="Note title" style="flex:1;margin-right:8px" />
-      <button id="save-note" class="btn">Save</button>
-      <a id="cancel-link" href="/" class="btn secondary" style="margin-left:8px">Cancel</a>
+      <div style="display:flex;gap:8px;align-items:center">
+        <button id="save-note" class="btn">Save</button>
+        <button id="delete-note" class="btn secondary" style="display:none">Delete</button>
+        <a id="cancel-link" href="/" class="btn secondary" style="margin-left:8px">Cancel</a>
+      </div>
     </div>
+    <div id="note-meta" class="muted small" style="margin-top:8px"></div>
     <div style="display:flex;gap:12px;margin-top:12px">
       <textarea id="note-body" style="flex:1;min-height:320px" placeholder="Write markdown here..."></textarea>
       <div style="flex:1;min-height:320px;border:1px solid var(--muted);padding:12px;overflow:auto;background:#fff" id="note-preview"></div>
@@ -74,6 +78,13 @@
         document.getElementById('note-title-input').value = n.title || '';
         document.getElementById('note-body').value = n.bodyMarkdown || '';
         document.getElementById('note-body').dispatchEvent(new Event('input'));
+        // show meta
+        const meta = document.getElementById('note-meta');
+        meta.textContent = 'Author: ' + (n.authorId || '-') + ' · Created: ' + (n.createdAt? new Date(n.createdAt).toLocaleString() : '-') + (n.updatedAt?(' · Updated: '+new Date(n.updatedAt).toLocaleString()):'');
+        // show delete button (API will enforce permission)
+        const del = document.getElementById('delete-note'); if(del) { del.style.display='inline-block'; del.addEventListener('click', async ()=>{
+          if(!confirm('Delete this note?')) return; try{ await api.request('/api/notes?id='+encodeURIComponent(noteId), { method:'DELETE' }); showToast('Deleted','success'); location.href = '/project-notes.html?projectId=' + encodeURIComponent(projectId || ''); }catch(e){ showToast('Delete failed: '+(e.error||JSON.stringify(e)),'error',3000); }
+        }); }
       }catch(e){ if(window.showToast) showToast('Unable to load note', 'error', 2200); }
     }
 

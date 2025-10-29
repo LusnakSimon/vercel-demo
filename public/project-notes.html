@@ -12,9 +12,16 @@
     <nav id="auth-actions" style="float:right"></nav>
   </header>
   <main class="container">
-    <h1 id="project-title">Project Notes</h1>
+    <div style="display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:12px">
+      <div>
+        <h1 id="project-title">Project Notes</h1>
+        <div id="project-meta" class="muted small">Loading project...</div>
+      </div>
+      <div>
+        <button id="create-note" class="btn">Create Note</button>
+      </div>
+    </div>
     <div class="row" style="margin-bottom:12px">
-      <button id="create-note" class="btn">Create Note</button>
       <input id="search-q" placeholder="Search notes" style="margin-left:8px;flex:1" />
       <button id="search-btn" class="btn secondary" style="margin-left:6px">Search</button>
     </div>
@@ -35,6 +42,16 @@
       document.getElementById('search-btn').addEventListener('click', ()=> load());
       document.getElementById('search-q').addEventListener('keyup', e=>{ if(e.key==='Enter') load(); });
       renderAuthActions();
+      // fetch project info for header
+      if (projectId) {
+        try{
+          const p = await api.request('/api/projects?id=' + encodeURIComponent(projectId));
+          document.getElementById('project-title').textContent = p.name || 'Project Notes';
+          const meta = document.getElementById('project-meta');
+          const members = (p.memberIds||[]).slice(0,5).map(id=>id).join(', ');
+          meta.textContent = 'Owner: ' + (p.ownerId || '—') + (members?(' · Members: '+members):'');
+        }catch(e){ /* ignore */ }
+      }
       await load();
     }
     async function load(){
@@ -46,7 +63,18 @@
         if (!list.length) { el.innerHTML = '<li class="muted">No notes found</li>'; return; }
         list.forEach(n=>{
           const li = document.createElement('li'); li.className='list-item';
-          li.innerHTML = `<div style="flex:1"><strong>${escapeHtml(n.title)}</strong><div class="small muted">${n.tags?n.tags.join(', '):''}</div></div><div><a href="/note.html?id=${n._id}" class="btn">Open</a></div>`;
+          const tags = n.tags ? escapeHtml(n.tags.join(', ')) : '';
+          const preview = `<div style="flex:1"><strong>${escapeHtml(n.title)}</strong><div class="small muted">${tags}</div></div>`;
+          const actions = document.createElement('div');
+          const open = document.createElement('a'); open.href = '/note.html?id='+encodeURIComponent(n._id); open.className='btn'; open.textContent='Open';
+          const del = document.createElement('button'); del.className='btn secondary'; del.style.marginLeft='8px'; del.textContent='Delete';
+          del.addEventListener('click', async ()=>{
+            if (!confirm('Delete this note? This cannot be undone.')) return;
+            try{ await api.request('/api/notes?id='+encodeURIComponent(n._id), { method: 'DELETE' }); showToast('Deleted', 'success'); load(); }catch(e){ showToast('Delete failed: '+(e.error||JSON.stringify(e)),'error',3000); }
+          });
+          actions.appendChild(open); actions.appendChild(del);
+          li.innerHTML = preview;
+          li.appendChild(actions);
           el.appendChild(li);
         });
       }catch(err){
