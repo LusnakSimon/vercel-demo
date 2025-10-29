@@ -1,37 +1,84 @@
 <!doctype html>
-<html>
+<html lang="en">
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width,initial-scale=1">
-  <title>Account</title>
+  <title>Account - Research Notebook</title>
   <link rel="stylesheet" href="/styles.css">
 </head>
 <body>
   <div class="container">
-      <div class="header">
-      <div class="brand"><h1>Account</h1></div>
-      <nav class="nav"><a href="/dashboard.html">Dashboard</a><a href="/projects.html">Projects</a><a href="/todos.html">Todos</a> <span id="auth-actions"></span></nav>
-    </div>
-    <div class="card">
-      <h2>Login</h2>
-      <form id="login-form" class="stack">
-        <label>Email <input id="login-email" type="email" required /></label>
-        <label>Password <input id="login-password" type="password" required /></label>
-        <div class="row"><button class="btn" type="submit">Login</button><a class="btn secondary" href="/dashboard.html">Skip</a></div>
-      </form>
-    </div>
+    <header class="site-header">
+      <div class="brand">
+        <div class="logo">RN</div>
+        <div>
+          <h1>Account Settings</h1>
+          <p class="lead">Manage your profile and preferences</p>
+        </div>
+      </div>
+      <nav class="nav">
+        <a href="/">Home</a>
+        <a href="/dashboard.html">Dashboard</a>
+        <a href="/todos.html">Todos</a>
+        <span id="auth-actions"></span>
+      </nav>
+    </header>
 
-    <div class="card" style="margin-top:12px">
-      <h2>Register</h2>
-      <form id="register-form" class="stack">
-        <label>Name <input id="register-name" type="text" /></label>
-        <label>Email <input id="register-email" type="email" required /></label>
-        <label>Password <input id="register-password" type="password" required /></label>
-        <div class="row"><button class="btn" type="submit">Create account</button></div>
-      </form>
-      <div class="muted small" style="margin-top:8px">Registration creates a new account and logs you in automatically.</div>
+    <div class="grid">
+      <div class="card">
+        <h2>Profile Information</h2>
+        <div id="profile-info" class="stack" style="margin-top: 20px;">
+          <p class="muted">Loading profile...</p>
+        </div>
+      </div>
+
+      <div class="card">
+        <h3>Quick Stats</h3>
+        <div class="stack" style="margin-top: 20px;">
+          <div class="list-item">
+            <span class="muted">Member since</span>
+            <span id="member-since">—</span>
+          </div>
+          <div class="list-item">
+            <span class="muted">Role</span>
+            <span id="user-role">—</span>
+          </div>
+        </div>
+      </div>
     </div>
   </div>
+  
   <script src="/app.js"></script>
+  <script>
+    async function loadProfile() {
+      try {
+        const res = await api.request('/api/auth/me');
+        if (res && res.user) {
+          const user = res.user;
+          document.getElementById('profile-info').innerHTML = `
+            <div class="list-item">
+              <span class="muted">Name</span>
+              <span><strong>${escapeHtml(user.name || 'Not set')}</strong></span>
+            </div>
+            <div class="list-item">
+              <span class="muted">Email</span>
+              <span>${escapeHtml(user.email)}</span>
+            </div>
+          `;
+          document.getElementById('member-since').textContent = new Date(user.createdAt).toLocaleDateString();
+          document.getElementById('user-role').innerHTML = `<span class="pill success">${escapeHtml(user.role || 'user')}</span>`;
+        }
+      } catch (err) {
+        document.getElementById('profile-info').innerHTML = `
+          <p class="muted">Please <a href="/login.html" style="color: var(--accent);">sign in</a> to view your profile.</p>
+        `;
+      }
+    }
+    
+    document.addEventListener('DOMContentLoaded', () => {
+      renderAuthActions();
+      loadProfile();
+    });
+  </script>
 </body>
 </html>

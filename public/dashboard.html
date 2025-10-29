@@ -1,23 +1,99 @@
 <!doctype html>
-<html>
+<html lang="en">
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width,initial-scale=1">
-  <title>Dashboard</title>
+  <title>Dashboard - Research Notebook</title>
   <link rel="stylesheet" href="/styles.css">
 </head>
 <body>
   <div class="container">
-    <div class="header">
-  <div class="brand"><h1>Dashboard</h1><div class="muted">Collaborative Research Notebook</div></div>
-  <nav class="nav"><a href="/todos.html">Todos</a><a href="/projects.html">Projects</a><a href="/account.html">Account</a><a href="/admin.html">Admin</a> <span id="auth-actions"></span></nav>
+    <header class="site-header">
+      <div class="brand">
+        <div class="logo">RN</div>
+        <div>
+          <h1>Dashboard</h1>
+          <p class="lead">Your research workspace</p>
+        </div>
+      </div>
+      <nav class="nav">
+        <a href="/">Home</a>
+        <a href="/todos.html">Todos</a>
+        <a href="/note.html">Notes</a>
+        <a href="/account.html">Account</a>
+        <span id="auth-actions"></span>
+      </nav>
+    </header>
+
+    <div id="dashboard-content">
+      <div class="hero">
+        <h2>Welcome to Your Dashboard</h2>
+        <p>Please <a href="/login.html" style="color: var(--accent); text-decoration: none;">sign in</a> to view your content.</p>
+      </div>
     </div>
-    <div class="card">
-      <h2>Recent Todos</h2>
-      <ul id="todos-list" class="list"></ul>
+
+    <div class="grid" id="dashboard-grid" style="display: none;">
+      <div class="card">
+        <h2>Recent Todos</h2>
+        <ul id="todos-list" class="todo-list"></ul>
+        <a href="/todos.html" class="btn btn-secondary" style="margin-top: 16px; display: inline-block;">View All Todos</a>
+      </div>
+
+      <div class="card">
+        <h2>Quick Actions</h2>
+        <div class="stack" style="margin-top: 20px;">
+          <a href="/todos.html" class="btn btn-primary">Create Todo</a>
+          <a href="/note.html" class="btn btn-secondary">New Note</a>
+          <a href="/account.html" class="btn btn-secondary">View Profile</a>
+        </div>
+      </div>
     </div>
-    <div class="footer">Use the login form at the root to authenticate.</div>
+
+    <footer class="footer">
+      <p>Research Notebook - Organize your research effectively</p>
+    </footer>
   </div>
+  
   <script src="/app.js"></script>
+  <script>
+    async function loadDashboard() {
+      try {
+        const res = await api.request('/api/auth/me');
+        if (res && res.user) {
+          // User is authenticated
+          document.getElementById('dashboard-content').style.display = 'none';
+          document.getElementById('dashboard-grid').style.display = 'grid';
+          
+          // Load recent todos
+          const todos = await api.request('/api/todos');
+          const list = document.getElementById('todos-list');
+          if (todos && todos.length > 0) {
+            list.innerHTML = '';
+            todos.slice(0, 5).forEach(t => {
+              const li = document.createElement('li');
+              li.className = 'todo-item' + (t.done ? ' done' : '');
+              li.innerHTML = `
+                <div class="todo-content">
+                  <div class="todo-title">${escapeHtml(t.title)}</div>
+                  ${t.description ? `<div class="todo-description">${escapeHtml(t.description)}</div>` : ''}
+                </div>
+              `;
+              list.appendChild(li);
+            });
+          } else {
+            list.innerHTML = '<li class="muted">No todos yet. <a href="/todos.html" style="color: var(--accent);">Create one</a></li>';
+          }
+        }
+      } catch (err) {
+        // Not authenticated, show welcome message
+        console.log('Not authenticated');
+      }
+    }
+    
+    document.addEventListener('DOMContentLoaded', () => {
+      renderAuthActions();
+      loadDashboard();
+    });
+  </script>
 </body>
 </html>

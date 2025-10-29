@@ -1,0 +1,58 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>Register - Research Notebook</title>
+  <link rel="stylesheet" href="/styles.css">
+</head>
+<body>
+  <div class="container">
+    <header class="site-header">
+      <div class="brand">
+        <div class="logo">RN</div>
+        <div>
+          <h1>Research Notebook</h1>
+          <p class="lead">Collaborative research and note-taking</p>
+        </div>
+      </div>
+      <nav class="nav">
+        <a href="/">Home</a>
+        <a href="/login.html">Login</a>
+      </nav>
+    </header>
+
+    <div style="max-width: 450px; margin: 60px auto;">
+      <div class="card">
+        <h2>Create Account</h2>
+        <p class="muted">Join Research Notebook and start organizing your work</p>
+        
+        <form id="register-form" class="stack" style="margin-top: 28px;">
+          <div>
+            <label for="register-name">Full Name</label>
+            <input id="register-name" type="text" placeholder="John Doe" required autofocus />
+          </div>
+          <div>
+            <label for="register-email">Email Address</label>
+            <input id="register-email" type="email" placeholder="your@email.com" required />
+          </div>
+          <div>
+            <label for="register-password">Password</label>
+            <input id="register-password" type="password" placeholder="Choose a strong password" required />
+          </div>
+          <button class="btn btn-primary" type="submit">Create Account</button>
+        </form>
+
+        <div class="muted small" style="margin-top: 16px;">
+          By creating an account, you agree to our terms of service and privacy policy.
+        </div>
+
+        <div class="muted center" style="margin-top: 24px; padding-top: 24px; border-top: 1px solid var(--border);">
+          Already have an account? <a href="/login.html" style="color: var(--accent); text-decoration: none;">Sign in</a>
+        </div>
+      </div>
+    </div>
+  </div>
+  <script src="/app.js"></script>
+</body>
+</html>

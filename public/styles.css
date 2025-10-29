@@ -559,6 +559,16 @@ input::placeholder, textarea::placeholder {
   font-size: 14px;
 }
 
+.footer a {
+  color: var(--text-secondary);
+  text-decoration: none;
+  transition: color 0.2s;
+}
+
+.footer a:hover {
+  color: var(--text-primary);
+}
+
 /* List styles */
 .list {
   list-style: none;
