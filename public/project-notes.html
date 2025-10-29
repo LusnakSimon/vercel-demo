@@ -1,0 +1,59 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>Project Notes</title>
+  <link rel="stylesheet" href="/styles.css">
+</head>
+<body>
+  <header class="site-header">
+    <a href="/">Research Notebook</a>
+    <nav id="auth-actions" style="float:right"></nav>
+  </header>
+  <main class="container">
+    <h1 id="project-title">Project Notes</h1>
+    <div class="row" style="margin-bottom:12px">
+      <button id="create-note" class="btn">Create Note</button>
+      <input id="search-q" placeholder="Search notes" style="margin-left:8px;flex:1" />
+      <button id="search-btn" class="btn secondary" style="margin-left:6px">Search</button>
+    </div>
+    <ul id="notes-list" class="list"></ul>
+  </main>
+  <script src="/app.js"></script>
+  <script>
+    // extract projectId from querystring
+    function qs(name){ const u=new URL(location.href); return u.searchParams.get(name); }
+    const projectId = qs('projectId');
+    async function init(){
+      if (!projectId) {
+        document.getElementById('project-title').textContent = 'Project Notes (no project selected)';
+      } else {
+        document.getElementById('project-title').textContent = 'Project Notes';
+      }
+      document.getElementById('create-note').addEventListener('click', ()=>{ location.href = '/note.html?projectId=' + encodeURIComponent(projectId || '') });
+      document.getElementById('search-btn').addEventListener('click', ()=> load());
+      document.getElementById('search-q').addEventListener('keyup', e=>{ if(e.key==='Enter') load(); });
+      renderAuthActions();
+      await load();
+    }
+    async function load(){
+      const q = document.getElementById('search-q').value;
+      try{
+        const url = '/api/notes?projectId=' + encodeURIComponent(projectId || '') + '&q=' + encodeURIComponent(q || '') + '&limit=100';
+        const list = await api.request(url);
+        const el = document.getElementById('notes-list'); el.innerHTML = '';
+        if (!list.length) { el.innerHTML = '<li class="muted">No notes found</li>'; return; }
+        list.forEach(n=>{
+          const li = document.createElement('li'); li.className='list-item';
+          li.innerHTML = `<div style="flex:1"><strong>${escapeHtml(n.title)}</strong><div class="small muted">${n.tags?n.tags.join(', '):''}</div></div><div><a href="/note.html?id=${n._id}" class="btn">Open</a></div>`;
+          el.appendChild(li);
+        });
+      }catch(err){
+        const el = document.getElementById('notes-list'); el.innerHTML = '<li class="muted">Unable to load notes. Are you logged in and a project member?</li>';
+      }
+    }
+    init();
+  </script>
+</body>
+</html>

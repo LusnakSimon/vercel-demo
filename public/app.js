@@ -13,6 +13,19 @@ const api = {
   }
 };
 
+// Toast helper (exposed globally)
+function showToast(message, type = 'info', timeout = 2500) {
+  try {
+    const id = 'app-toast';
+    let el = document.getElementById(id);
+    if (el) el.remove();
+    el = document.createElement('div'); el.id = id; el.className = 'toast ' + (type||'info'); el.textContent = message;
+    document.body.appendChild(el);
+    setTimeout(()=>{ el && el.remove(); }, timeout);
+  } catch(e) { console.warn('toast failed', e); }
+}
+window.showToast = showToast;
+
 async function loginFormHandler(ev) {
   ev && ev.preventDefault();
   const email = document.querySelector('#login-email').value;
@@ -57,6 +70,24 @@ async function loadTodosList() {
     });
   } catch (err) {
     listEl.innerHTML = '<li class="muted">Unable to load todos. Are you logged in?</li>';
+  }
+}
+
+// Notes helpers
+async function loadProjectNotes(projectId, q) {
+  const listEl = document.querySelector('#notes-list');
+  if (!listEl) return;
+  try {
+    const url = '/api/notes?projectId=' + encodeURIComponent(projectId || '') + '&q=' + encodeURIComponent(q || '');
+    const notes = await api.request(url);
+    listEl.innerHTML = '';
+    notes.forEach(n => {
+      const li = document.createElement('li'); li.className = 'list-item';
+      li.innerHTML = `<div style="flex:1"><strong>${escapeHtml(n.title)}</strong><div class="small muted">${n.tags?escapeHtml(n.tags.join(', ')):''}</div></div><div><a class="btn" href="/note.html?id=${n._id}">Open</a></div>`;
+      listEl.appendChild(li);
+    });
+  } catch (err) {
+    listEl.innerHTML = '<li class="muted">Unable to load notes.</li>';
   }
 }
 

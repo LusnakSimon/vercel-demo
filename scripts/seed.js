@@ -20,6 +20,7 @@ async function run() {
   const users = db.collection('users');
   const projects = db.collection('projects');
   const todos = db.collection('todos');
+  const notes = db.collection('notes');
 
   await users.deleteMany({});
   await projects.deleteMany({});
@@ -30,11 +31,47 @@ async function run() {
   const r2 = await users.insertOne({ email: 'admin@example.com', name: 'Admin', passwordHash: pw, role: 'admin', createdAt: new Date() });
 
   const p1 = await projects.insertOne({ name: 'Demo Project', ownerId: r1.insertedId, createdAt: new Date() });
+  // add a small members array for collaborative demo (owner + admin)
+  await projects.updateOne({ _id: p1.insertedId }, { $set: { memberIds: [String(r1.insertedId), String(r2.insertedId)] } });
 
   await todos.insertMany([
     { title: 'First task', description: 'Demo todo', projectId: String(p1.insertedId), ownerId: String(r1.insertedId), done: false, createdAt: new Date() },
     { title: 'Second task', description: 'Another demo', projectId: String(p1.insertedId), ownerId: String(r1.insertedId), done: false, createdAt: new Date() }
   ]);
+
+  // create sample notes for Collaborative Research Notebook demo
+  await notes.deleteMany({});
+  await notes.insertMany([
+    {
+      title: 'Welcome to the Research Notebook',
+      bodyMarkdown: '# Research Notebook\n\nThis is a demo note. Add your observations, links, and snippets here.',
+      projectId: String(p1.insertedId),
+      tags: ['welcome','demo'],
+      attachments: [],
+      visibility: 'project',
+      authorId: String(r1.insertedId),
+      createdAt: new Date(),
+      updatedAt: new Date()
+    },
+    {
+      title: 'Literature notes: Example Paper',
+      bodyMarkdown: 'Summary of *Example Paper* by Someone et al.\n\n- Key idea: ...\n- Notes: ...',
+      projectId: String(p1.insertedId),
+      tags: ['literature','summary'],
+      attachments: [],
+      visibility: 'project',
+      authorId: String(r2.insertedId),
+      createdAt: new Date(),
+      updatedAt: new Date()
+    }
+  ]);
+
+  // ensure text index on notes for search
+  try {
+    await notes.createIndex({ title: 'text', bodyMarkdown: 'text', tags: 'text' });
+  } catch (e) {
+    console.warn('Could not create notes text index', e.message || e);
+  }
 
   console.log('Seed complete');
   await client.close();
