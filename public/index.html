@@ -137,10 +137,39 @@
                   if(!items || items.length===0){
                     const li = document.createElement('li'); li.className='todo-empty muted'; li.textContent='No todos yet.'; listEl.appendChild(li); return;
                   }
-                  items.forEach((t,idx)=>{
+                  // pagination: show first pageSize items with Load more
+                  const pageSize = 5;
+                  const max = Math.min(items.length, render._shownCount || pageSize);
+                  items.slice(0, max).forEach((t,idx)=>{
                     const li = document.createElement('li'); li.className='todo-item';
                     const left = document.createElement('div');
                     const title = document.createElement('div'); title.className='title'; title.textContent = t.title || t.text || ('Todo '+(idx+1));
+                    // in-place editing (double-click to edit)
+                    title.addEventListener('dblclick', ()=>{
+                      title.contentEditable = 'true';
+                      title.focus();
+                    });
+                    title.addEventListener('blur', async ()=>{
+                      title.contentEditable = 'false';
+                      const newText = title.textContent && title.textContent.trim();
+                      if(!newText) return;
+                      // if item has _id, try to PATCH the API; otherwise update localStorage
+                      if(t._id){
+                        try{
+                          await fetch('/api/todos?id='+encodeURIComponent(t._id), {method:'PATCH', headers:{'content-type':'application/json'}, body: JSON.stringify({title:newText})});
+                          // optimistic UI update: nothing else needed
+                        }catch(e){
+                          console.warn('update failed, saving locally', e);
+                          const saved = fromLocal();
+                          const idx = saved.findIndex(x=>x.createdAt===t.createdAt || x.title===t.title);
+                          if(idx>=0){ saved[idx].title = newText; toLocal(saved); }
+                        }
+                      }else{
+                        const saved = fromLocal();
+                        const idx = saved.findIndex(x=>x.createdAt===t.createdAt || x.title===t.title);
+                        if(idx>=0){ saved[idx].title = newText; toLocal(saved); }
+                      }
+                    });
                     const meta = document.createElement('div'); meta.className='meta'; meta.textContent = (t.createdAt? new Date(t.createdAt).toLocaleString() : '');
                     left.appendChild(title); if(meta.textContent) left.appendChild(meta);
                     const right = document.createElement('div');
@@ -152,6 +181,14 @@
                     right.appendChild(doneBtn);
                     li.appendChild(left); li.appendChild(right); listEl.appendChild(li);
                   })
+                  // show load more if there are more items
+                  const moreExisting = document.getElementById('load-more-btn');
+                  if(moreExisting) moreExisting.remove();
+                  if(items.length > max){
+                    const btn = document.createElement('button'); btn.id='load-more-btn'; btn.className='btn secondary'; btn.textContent = 'Load more';
+                    btn.addEventListener('click', ()=>{ render._shownCount = Math.min(items.length, (render._shownCount || pageSize) + pageSize); render(items); });
+                    listEl.parentNode.appendChild(btn);
+                  }
                 }
 
                 async function load(){
