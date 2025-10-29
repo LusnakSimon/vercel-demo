@@ -22,6 +22,28 @@ async function loginFormHandler(ev) {
   window.location.href = '/dashboard.html';
 }
 
+async function registerFormHandler(ev) {
+  ev && ev.preventDefault();
+  const email = document.querySelector('#register-email').value;
+  const password = document.querySelector('#register-password').value;
+  const name = document.querySelector('#register-name').value;
+  try {
+    const res = await api.request('/api/auth/register', { method: 'POST', body: { email, password, name } });
+    // register returns { token }
+    if (res && res.token) {
+      localStorage.setItem('token', res.token);
+      window.location.href = '/dashboard.html';
+      return;
+    }
+    // fallback: attempt login
+    const login = await api.request('/api/auth/login', { method: 'POST', body: { email, password } });
+    localStorage.setItem('token', login.token);
+    window.location.href = '/dashboard.html';
+  } catch (err) {
+    alert('Registration failed: ' + (err && (err.error || JSON.stringify(err))));
+  }
+}
+
 async function loadTodosList() {
   const listEl = document.querySelector('#todos-list');
   if (!listEl) return;
@@ -43,5 +65,7 @@ function escapeHtml(s){ if(!s) return ''; return String(s).replace(/[&<>"']/g, c
 document.addEventListener('DOMContentLoaded', ()=>{
   const loginForm = document.querySelector('#login-form');
   if (loginForm) loginForm.addEventListener('submit', loginFormHandler);
+    const registerForm = document.querySelector('#register-form');
+    if (registerForm) registerForm.addEventListener('submit', registerFormHandler);
   loadTodosList();
 });
