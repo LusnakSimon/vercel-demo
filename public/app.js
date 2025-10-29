@@ -30,33 +30,65 @@ window.showToast = showToast;
 
 async function loginFormHandler(ev) {
   ev && ev.preventDefault();
+  const btn = ev.target.querySelector('button[type="submit"]');
   try {
+    if (btn) btn.disabled = true;
     const email = document.querySelector('#login-email').value;
     const password = document.querySelector('#login-password').value;
     const res = await api.request('/api/auth/login', { method: 'POST', body: { email, password } });
-    // server sets HttpOnly session cookie; fetch current user
-    try { const me = await api.request('/api/auth/me'); } catch(e) {}
-    showToast('Logged in', 'success', 1000);
-    window.location.href = '/dashboard.html';
+    
+    if (!res || !res.user) {
+      throw new Error('Login response missing user data');
+    }
+    
+    // Verify session is set by checking /api/auth/me
+    const me = await api.request('/api/auth/me');
+    if (!me || !me.user) {
+      throw new Error('Session not established');
+    }
+    
+    showToast('Welcome back, ' + (me.user.name || me.user.email) + '!', 'success', 1500);
+    // Small delay to ensure cookie is fully set
+    setTimeout(() => {
+      window.location.href = '/dashboard.html';
+    }, 300);
   } catch (err) {
     console.warn('login failed', err);
-    showToast('Login failed: ' + (err && (err.error || JSON.stringify(err))), 'error', 3000);
+    showToast('Login failed: ' + (err && (err.error || err.message || JSON.stringify(err))), 'error', 3000);
+    if (btn) btn.disabled = false;
   }
 }
 
 async function registerFormHandler(ev) {
   ev && ev.preventDefault();
-  const email = document.querySelector('#register-email').value;
-  const password = document.querySelector('#register-password').value;
-  const name = document.querySelector('#register-name').value;
+  const btn = ev.target.querySelector('button[type="submit"]');
   try {
+    if (btn) btn.disabled = true;
+    const email = document.querySelector('#register-email').value;
+    const password = document.querySelector('#register-password').value;
+    const name = document.querySelector('#register-name').value;
+    
     const res = await api.request('/api/auth/register', { method: 'POST', body: { email, password, name } });
-    // server sets session cookie; call /api/auth/me to warm UI
-    try { await api.request('/api/auth/me'); } catch(e) {}
-    window.location.href = '/dashboard.html';
+    
+    if (!res || !res.user) {
+      throw new Error('Registration response missing user data');
+    }
+    
+    // Verify session is set
+    const me = await api.request('/api/auth/me');
+    if (!me || !me.user) {
+      throw new Error('Session not established');
+    }
+    
+    showToast('Welcome, ' + (me.user.name || me.user.email) + '!', 'success', 1500);
+    // Small delay to ensure cookie is fully set
+    setTimeout(() => {
+      window.location.href = '/dashboard.html';
+    }, 300);
   } catch (err) {
     console.warn('registration failed', err);
-    showToast('Registration failed: ' + (err && (err.error || JSON.stringify(err))), 'error', 3000);
+    showToast('Registration failed: ' + (err && (err.error || err.message || JSON.stringify(err))), 'error', 3000);
+    if (btn) btn.disabled = false;
   }
 }
 
