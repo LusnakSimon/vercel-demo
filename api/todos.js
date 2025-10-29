@@ -23,8 +23,10 @@ module.exports = async (req, res) => {
       const authUser = await require('../lib/auth').getUserFromRequest(req);
       if (!authUser) return res.status(401).json({ error: 'unauthenticated' });
       const { title, description, projectId } = req.body || {};
-      if (!title) return res.status(400).json({ error: 'title required' });
-      const doc = { title, description: description || '', projectId: projectId || null, ownerId: String(authUser._id), done: false, createdAt: new Date() };
+      const { requireString } = require('../lib/validate');
+      if (!requireString(title, 1)) return res.status(400).json({ error: 'title required' });
+      if (projectId && typeof projectId !== 'string') return res.status(400).json({ error: 'projectId must be a string' });
+      const doc = { title: title.trim(), description: description ? String(description).trim() : '', projectId: projectId || null, ownerId: String(authUser._id), done: false, createdAt: new Date() };
       const r = await todos.insertOne(doc);
       doc._id = r.insertedId;
       return res.status(201).json(doc);
@@ -41,6 +43,9 @@ module.exports = async (req, res) => {
         return res.status(403).json({ error: 'forbidden' });
       }
       const updates = req.body || {};
+      const { requireString } = require('../lib/validate');
+      if (updates.title && !requireString(updates.title, 1)) return res.status(400).json({ error: 'invalid title' });
+      if (updates.projectId && typeof updates.projectId !== 'string') return res.status(400).json({ error: 'projectId must be a string' });
       updates.updatedAt = new Date();
       await todos.updateOne({ _id: new ObjectId(id) }, { $set: updates });
       const updated = await todos.findOne({ _id: new ObjectId(id) });

@@ -30,6 +30,12 @@ module.exports = async (req, res) => {
       }
       const updates = req.body || {};
       delete updates.passwordHash;
+      // validation: if updating email, validate it; if updating name, ensure length
+      const { isEmail, requireString } = require('../lib/validate');
+      if (updates.email && !isEmail(updates.email)) return res.status(400).json({ error: 'invalid email' });
+      if (updates.name && !requireString(updates.name, 2)) return res.status(400).json({ error: 'name too short' });
+      // only admin can change role
+      if (updates.role && !requireRole(authUser, 'admin')) delete updates.role;
       await users.updateOne({ _id: new ObjectId(id) }, { $set: updates });
       const updated = await users.findOne({ _id: new ObjectId(id) }, { projection: { passwordHash: 0 } });
       return res.status(200).json(updated);
