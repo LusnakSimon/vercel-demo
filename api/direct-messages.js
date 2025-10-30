@@ -1,20 +1,27 @@
+const { connect } = require('../lib/mongo');
 const { ObjectId } = require('mongodb');
-const { getDb } = require('./db');
-const { broadcastUpdate } = require('./sse');
+const { requireAuth } = require('../lib/auth');
+
+// Import broadcast function for real-time messaging
+let broadcastUpdate;
+try {
+  const realtimeModule = require('./realtime/updates');
+  broadcastUpdate = realtimeModule.broadcastUpdate;
+} catch (e) {
+  broadcastUpdate = () => {};
+}
 
 module.exports = async (req, res) => {
-  const { method } = req;
-  
   try {
-    // Check authentication
-    if (!req.session?.userId) {
-      return res.status(401).json({ error: 'Not authenticated' });
-    }
-
-    const db = getDb();
+    const db = await connect();
     const directMessages = db.collection('direct_messages');
     const users = db.collection('users');
-    const currentUserId = req.session.userId;
+    
+    const user = await requireAuth(req, res);
+    if (!user) return null;
+    
+    const currentUserId = user._id.toString();
+    const { method } = req;
 
     if (method === 'GET') {
       const { conversationWith, conversationId, limit = '50', before } = req.query;
