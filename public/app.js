@@ -60,12 +60,6 @@ const api = {
 window.api = api;
 
 // Theme management
-function initTheme() {
-  const savedTheme = localStorage.getItem('theme') || 'dark';
-  document.documentElement.setAttribute('data-theme', savedTheme);
-  updateThemeIcon(savedTheme);
-}
-
 function toggleTheme() {
   const current = document.documentElement.getAttribute('data-theme') || 'dark';
   const next = current === 'dark' ? 'light' : 'dark';
@@ -82,20 +76,19 @@ function updateThemeIcon(theme) {
   }
 }
 
-// Initialize theme immediately and on DOM load
-initTheme();
+// Initialize theme icon on load (theme already applied by inline script in HTML)
 window.toggleTheme = toggleTheme;
 
-// Re-initialize theme icon when DOM is ready (in case button wasn't available initially)
+// Update theme icon when DOM is ready
 if (document.readyState === 'loading') {
   document.addEventListener('DOMContentLoaded', () => {
-    const savedTheme = localStorage.getItem('theme') || 'dark';
-    updateThemeIcon(savedTheme);
+    const currentTheme = document.documentElement.getAttribute('data-theme') || 'dark';
+    updateThemeIcon(currentTheme);
   });
 } else {
   // DOM already loaded
-  const savedTheme = localStorage.getItem('theme') || 'dark';
-  updateThemeIcon(savedTheme);
+  const currentTheme = document.documentElement.getAttribute('data-theme') || 'dark';
+  updateThemeIcon(currentTheme);
 }
 
 // Toast helper (exposed globally)
