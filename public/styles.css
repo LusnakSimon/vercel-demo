@@ -408,6 +408,20 @@ input::placeholder, textarea::placeholder {
   }
 }
 
+.modal.confirm {
+  max-width: 400px;
+  text-align: center;
+}
+
+.modal.confirm h3 {
+  margin-bottom: 16px;
+}
+
+.modal.confirm p {
+  color: var(--text-secondary);
+  margin-bottom: 24px;
+}
+
 .modal h3 {
   margin-bottom: 24px;
   font-size: 20px;

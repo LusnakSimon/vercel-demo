@@ -204,7 +204,8 @@ document.addEventListener('click', async (ev) => {
     // open modal editor
     openTodoModal(id);
   } else if (btn.textContent === 'Delete') {
-    if (!confirm('Delete todo?')) return;
+    const confirmed = await confirmDialog('Delete todo?', 'This action cannot be undone.');
+    if (!confirmed) return;
     try { await api.request('/api/todos?id='+encodeURIComponent(id), { method: 'DELETE' }); showToast('Deleted', 'success', 1000); loadTodosList(); } catch(e){ showToast('Delete failed', 'error'); }
   }
 });
@@ -364,3 +365,58 @@ document.addEventListener('DOMContentLoaded', () => {
     });
   }
 });
+
+// Confirmation dialog
+function confirmDialog(title, message) {
+  return new Promise((resolve) => {
+    const overlay = document.createElement('div');
+    overlay.className = 'modal-overlay';
+    overlay.style.display = 'flex';
+    
+    const modal = document.createElement('div');
+    modal.className = 'modal confirm';
+    modal.innerHTML = `
+      <h3>${escapeHtml(title)}</h3>
+      <p>${escapeHtml(message)}</p>
+      <div class="modal-actions">
+        <button class="btn btn-secondary" id="confirm-cancel">Cancel</button>
+        <button class="btn btn-danger" id="confirm-yes">Delete</button>
+      </div>
+    `;
+    
+    overlay.appendChild(modal);
+    document.body.appendChild(overlay);
+    
+    const cleanup = () => {
+      overlay.remove();
+    };
+    
+    document.getElementById('confirm-cancel').addEventListener('click', () => {
+      cleanup();
+      resolve(false);
+    });
+    
+    document.getElementById('confirm-yes').addEventListener('click', () => {
+      cleanup();
+      resolve(true);
+    });
+    
+    // ESC key
+    const handleEsc = (e) => {
+      if (e.key === 'Escape') {
+        cleanup();
+        resolve(false);
+        document.removeEventListener('keydown', handleEsc);
+      }
+    };
+    document.addEventListener('keydown', handleEsc);
+    
+    // Click outside
+    overlay.addEventListener('click', (e) => {
+      if (e.target === overlay) {
+        cleanup();
+        resolve(false);
+      }
+    });
+  });
+}
