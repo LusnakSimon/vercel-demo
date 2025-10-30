@@ -20,6 +20,7 @@
         <a href="/">Home</a>
         <a href="/dashboard.html">Dashboard</a>
         <a href="/todos.html">Todos</a>
+        <button id="theme-toggle" title="Toggle theme" onclick="toggleTheme()">🌙</button>
         <span id="auth-actions"></span>
       </nav>
     </header>
@@ -30,18 +31,59 @@
         <div id="profile-info" class="stack" style="margin-top: 20px;">
           <p class="muted">Loading profile...</p>
         </div>
+        
+        <div id="edit-profile" style="display: none; margin-top: 24px;">
+          <h3>Edit Profile</h3>
+          <form id="update-profile-form" class="stack" style="margin-top: 16px;">
+            <div>
+              <label for="update-name">Name</label>
+              <input id="update-name" type="text" placeholder="Your name" />
+            </div>
+            <div>
+              <label for="update-email">Email</label>
+              <input id="update-email" type="email" placeholder="your@email.com" />
+            </div>
+            <div class="row" style="gap: 12px;">
+              <button type="submit" class="btn btn-primary">Save Changes</button>
+              <button type="button" class="btn btn-secondary" onclick="cancelEdit()">Cancel</button>
+            </div>
+          </form>
+        </div>
+        
+        <button id="edit-btn" class="btn btn-secondary" style="margin-top: 20px; display: none;" onclick="showEditForm()">
+          Edit Profile
+        </button>
       </div>
 
       <div class="card">
-        <h3>Quick Stats</h3>
-        <div class="stack" style="margin-top: 20px;">
-          <div class="list-item">
-            <span class="muted">Member since</span>
-            <span id="member-since">—</span>
+        <h3>Change Password</h3>
+        <form id="change-password-form" class="stack" style="margin-top: 20px;">
+          <div>
+            <label for="current-password">Current Password</label>
+            <input id="current-password" type="password" required />
           </div>
-          <div class="list-item">
-            <span class="muted">Role</span>
-            <span id="user-role">—</span>
+          <div>
+            <label for="new-password">New Password</label>
+            <input id="new-password" type="password" required />
+          </div>
+          <div>
+            <label for="confirm-password">Confirm New Password</label>
+            <input id="confirm-password" type="password" required />
+          </div>
+          <button type="submit" class="btn btn-primary">Update Password</button>
+        </form>
+        
+        <div style="margin-top: 32px; padding-top: 24px; border-top: 1px solid var(--border);">
+          <h3>Account Stats</h3>
+          <div class="stack" style="margin-top: 16px;">
+            <div class="list-item">
+              <span class="muted">Member since</span>
+              <span id="member-since">—</span>
+            </div>
+            <div class="list-item">
+              <span class="muted">Role</span>
+              <span id="user-role">—</span>
+            </div>
           </div>
         </div>
       </div>
@@ -50,23 +92,26 @@
   
   <script src="/app.js"></script>
   <script>
+    let currentUser = null;
+    
     async function loadProfile() {
       try {
         const res = await api.request('/api/auth/me');
         if (res && res.user) {
-          const user = res.user;
+          currentUser = res.user;
           document.getElementById('profile-info').innerHTML = `
             <div class="list-item">
               <span class="muted">Name</span>
-              <span><strong>${escapeHtml(user.name || 'Not set')}</strong></span>
+              <span><strong>${escapeHtml(currentUser.name || 'Not set')}</strong></span>
             </div>
             <div class="list-item">
               <span class="muted">Email</span>
-              <span>${escapeHtml(user.email)}</span>
+              <span>${escapeHtml(currentUser.email)}</span>
             </div>
           `;
-          document.getElementById('member-since').textContent = new Date(user.createdAt).toLocaleDateString();
-          document.getElementById('user-role').innerHTML = `<span class="pill success">${escapeHtml(user.role || 'user')}</span>`;
+          document.getElementById('member-since').textContent = new Date(currentUser.createdAt).toLocaleDateString();
+          document.getElementById('user-role').innerHTML = `<span class="pill success">${escapeHtml(currentUser.role || 'user')}</span>`;
+          document.getElementById('edit-btn').style.display = 'block';
         }
       } catch (err) {
         document.getElementById('profile-info').innerHTML = `
@@ -74,6 +119,74 @@
         `;
       }
     }
+    
+    function showEditForm() {
+      document.getElementById('profile-info').style.display = 'none';
+      document.getElementById('edit-btn').style.display = 'none';
+      document.getElementById('edit-profile').style.display = 'block';
+      document.getElementById('update-name').value = currentUser.name || '';
+      document.getElementById('update-email').value = currentUser.email || '';
+    }
+    
+    function cancelEdit() {
+      document.getElementById('profile-info').style.display = 'block';
+      document.getElementById('edit-btn').style.display = 'block';
+      document.getElementById('edit-profile').style.display = 'none';
+    }
+    
+    window.showEditForm = showEditForm;
+    window.cancelEdit = cancelEdit;
+    
+    document.getElementById('update-profile-form').addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const name = document.getElementById('update-name').value.trim();
+      const email = document.getElementById('update-email').value.trim();
+      
+      if (!email) {
+        showToast('Email is required', 'error');
+        return;
+      }
+      
+      try {
+        await api.request('/api/auth/update-profile', {
+          method: 'POST',
+          body: { name, email }
+        });
+        showToast('Profile updated successfully!', 'success');
+        cancelEdit();
+        await loadProfile();
+      } catch (err) {
+        showToast('Failed to update profile: ' + (err.error || 'Unknown error'), 'error');
+      }
+    });
+    
+    document.getElementById('change-password-form').addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const current = document.getElementById('current-password').value;
+      const newPass = document.getElementById('new-password').value;
+      const confirm = document.getElementById('confirm-password').value;
+      
+      if (newPass !== confirm) {
+        showToast('Passwords do not match', 'error');
+        return;
+      }
+      
+      if (newPass.length < 6) {
+        showToast('Password must be at least 6 characters', 'error');
+        return;
+      }
+      
+      try {
+        await api.request('/api/auth/change-password', {
+          method: 'POST',
+          body: { currentPassword: current, newPassword: newPass }
+        });
+        showToast('Password changed successfully!', 'success');
+        document.getElementById('change-password-form').reset();
+      } catch (err) {
+        showToast('Failed to change password: ' + (err.error || 'Unknown error'), 'error');
+      }
+    });
     
     document.addEventListener('DOMContentLoaded', () => {
       renderAuthActions();
