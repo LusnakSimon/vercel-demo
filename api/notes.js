@@ -41,20 +41,21 @@ module.exports = async (req, res) => {
       const user = await getUserFromRequest(req);
       if (!user) return res.status(401).json({ error: 'unauthenticated' });
 
-      const filter = { $or: [ { authorId: String(user._id) } ] };
+      // By default, show only user's own notes (simpler UX)
+      // If projectId is provided, include project notes where user is member
+      const filter = { authorId: String(user._id) };
 
-      // include notes from projects where user is member
       if (projectId) {
-        // if projectId provided, ensure membership
+        // if projectId provided, ensure membership and include project notes
         const { isProjectMember } = require('../lib/auth');
         const member = await isProjectMember(user, projectId);
         if (!member && !requireRole(user, 'admin')) return res.status(403).json({ error: 'forbidden' });
-        filter.$or.push({ projectId: String(projectId) });
-      } else {
-  // include user's project notes by finding projects where user is member
-  const projectsCursor = await projects.find({ $or: [ { ownerId: String(user._id) } , { memberIds: { $in: [ String(user._id) ] } } ] }).project({ _id: 1 }).toArray().catch(()=>[]);
-        const projectIds = projectsCursor.map(p => String(p._id));
-        if (projectIds.length) filter.$or.push({ projectId: { $in: projectIds } });
+        // Show both user's notes AND project notes for this project
+        filter.$or = [
+          { authorId: String(user._id) },
+          { projectId: String(projectId) }
+        ];
+        delete filter.authorId;
       }
 
       if (tag) filter.tags = String(tag);

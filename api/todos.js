@@ -9,12 +9,23 @@ module.exports = async (req, res) => {
 
     if (req.method === 'GET') {
       // GET /api/todos or /api/todos?id=...
+      const authUser = await require('../lib/auth').getUserFromRequest(req);
+      if (!authUser) return res.status(401).json({ error: 'unauthenticated' });
+      
       const { id, projectId } = req.query || {};
       if (id) {
         const doc = await todos.findOne({ _id: new ObjectId(id) });
-        return res.status(200).json(doc || {});
+        if (!doc) return res.status(404).json({ error: 'not found' });
+        // Verify ownership or admin
+        if (String(doc.ownerId) !== String(authUser._id) && authUser.role !== 'admin') {
+          return res.status(403).json({ error: 'forbidden' });
+        }
+        return res.status(200).json(doc);
       }
-      const q = projectId ? { projectId } : {};
+      
+      // List todos - filter by current user's ownership
+      const q = { ownerId: String(authUser._id) };
+      if (projectId) q.projectId = projectId;
       const list = await todos.find(q).sort({ createdAt: -1 }).toArray();
       return res.status(200).json(list);
     }
