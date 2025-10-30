@@ -7,7 +7,26 @@
   <link rel="stylesheet" href="/styles.css">
 </head>
 <body>
-  <div id="app"></div>
+  <div class="container">
+    <header class="site-header">
+      <div class="brand">
+        <div class="logo">RN</div>
+        <div>
+          <h1>My Contacts</h1>
+          <p class="lead">Manage your collaborators</p>
+        </div>
+      </div>
+      <nav class="nav">
+        <a href="/">Home</a>
+        <a href="/dashboard.html">Dashboard</a>
+        <a href="/projects.html">Projects</a>
+        <a href="/notes.html">Notes</a>
+        <span id="auth-actions"></span>
+      </nav>
+    </header>
+
+    <div id="app"></div>
+  </div>
 
   <script src="/app.js"></script>
   <script>
@@ -56,18 +75,15 @@
     function renderPage() {
       const app = document.getElementById('app');
       app.innerHTML = `
-        <div class="page-container">
-          <div class="page-header">
+        <div style="margin-top: 24px;">
+          <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 24px;">
             <div>
-              <h1 class="page-title">👥 My Contacts</h1>
-              <p class="page-subtitle">Manage your frequent collaborators</p>
+              <h2 style="margin: 0 0 4px 0;">👥 Contacts</h2>
+              <p class="muted" style="margin: 0;">Manage your frequent collaborators</p>
             </div>
-            <button class="btn btn-secondary" onclick="window.location.href='/dashboard.html'">
-              ← Back to Dashboard
-            </button>
           </div>
 
-          <div class="search-container" style="margin-bottom: 24px;">
+          <div style="display: flex; gap: 12px; margin-bottom: 24px;">
             <input 
               type="email" 
               id="add-contact-input" 
@@ -93,8 +109,8 @@
                   <div class="contact-header">
                     <div class="contact-avatar">${contact.name ? contact.name[0].toUpperCase() : '?'}</div>
                     <div class="contact-info">
-                      <div class="contact-name">${contact.name || 'Unknown'}</div>
-                      <div class="contact-email">${contact.email}</div>
+                      <div class="contact-name">${escapeHtml(contact.name || 'Unknown')}</div>
+                      <div class="contact-email">${escapeHtml(contact.email)}</div>
                     </div>
                   </div>
                   <div class="contact-actions">
@@ -107,7 +123,7 @@
                     </button>
                     <button 
                       class="btn btn-small btn-secondary" 
-                      onclick="showInviteModal('${contact._id}', '${contact.name || contact.email}')"
+                      onclick="showInviteModal('${contact._id}', '${escapeHtml(contact.name || contact.email)}')"
                       title="Invite to project"
                     >
                       📨 Invite
@@ -130,11 +146,11 @@
         <div id="invite-modal" class="modal">
           <div class="modal-content">
             <h2>Invite to Project</h2>
-            <p id="invite-user-name"></p>
-            <select id="project-select" class="form-input">
+            <p id="invite-user-name" class="muted"></p>
+            <select id="project-select" class="form-input" style="margin: 16px 0;">
               <option value="">Select a project...</option>
               ${allProjects.map(p => `
-                <option value="${p._id}">${p.name}</option>
+                <option value="${p._id}">${escapeHtml(p.name)}</option>
               `).join('')}
             </select>
             <div style="display: flex; gap: 8px; margin-top: 16px;">
@@ -144,6 +160,13 @@
           </div>
         </div>
       `;
+    }
+    
+    function escapeHtml(text) {
+      if (!text) return '';
+      const div = document.createElement('div');
+      div.textContent = text;
+      return div.innerHTML;
     }
 
     window.addContactByEmail = async function() {
@@ -325,10 +348,28 @@
       min-width: 80px;
     }
 
-    .search-container {
-      display: flex;
-      gap: 12px;
-      align-items: center;
+    .empty-state {
+      text-align: center;
+      padding: 60px 20px;
+      background: var(--surface);
+      border-radius: 12px;
+      border: 1px solid var(--border);
+    }
+
+    .empty-icon {
+      font-size: 64px;
+      margin-bottom: 16px;
+      opacity: 0.3;
+    }
+
+    .empty-state h3 {
+      margin: 0 0 8px 0;
+      color: var(--text);
+    }
+
+    .empty-state p {
+      margin: 0;
+      color: var(--text-secondary);
     }
 
     @media (max-width: 768px) {
