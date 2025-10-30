@@ -3,30 +3,142 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width,initial-scale=1">
-  <title>Projects</title>
+  <title>Projects - Research Notebook</title>
   <link rel="stylesheet" href="/styles.css">
 </head>
 <body>
   <div class="container">
-    <div class="header">
-      <div class="brand"><h1>Projects</h1></div>
-  <nav class="nav"><a href="/dashboard.html">Dashboard</a><a href="/todos.html">Todos</a><a href="/account.html">Account</a> <span id="auth-actions"></span></nav>
-    </div>
-    <div class="card">
-      <h2>Your Projects</h2>
-      <div id="projects-list" class="list muted">Loading…</div>
+    <header class="site-header">
+      <div class="brand">
+        <div class="logo">RN</div>
+        <div>
+          <h1>Projects</h1>
+          <p class="lead">Manage your team projects</p>
+        </div>
+      </div>
+      <nav class="nav">
+        <a href="/">Home</a>
+        <a href="/dashboard.html">Dashboard</a>
+        <a href="/todos.html">Todos</a>
+        <button id="theme-toggle" title="Toggle theme" onclick="toggleTheme()">🌙</button>
+        <span id="auth-actions"></span>
+      </nav>
+    </header>
+
+    <div class="grid">
+      <div class="card">
+        <h2>Your Projects</h2>
+        <ul id="projects-list" class="list"></ul>
+      </div>
+
+      <div class="card">
+        <h3>Create New Project</h3>
+        <form id="create-project-form" class="stack">
+          <div>
+            <label for="project-name">Project Name</label>
+            <input id="project-name" type="text" placeholder="Enter project name..." required />
+          </div>
+          <div>
+            <label for="project-description">Description</label>
+            <textarea id="project-description" placeholder="What's this project about?" rows="3"></textarea>
+          </div>
+          <button class="btn btn-primary" type="submit">Create Project</button>
+        </form>
+      </div>
     </div>
   </div>
+
   <script src="/app.js"></script>
   <script>
-    async function load() {
+    async function loadProjects() {
+      const list = document.getElementById('projects-list');
+      list.innerHTML = '<li class="muted center" style="padding: 40px;"><div class="spinner" style="margin: 0 auto 12px;"></div>Loading...</li>';
+      
       try {
-        const projects = await api.request('/api/projects');
-        const el = document.getElementById('projects-list'); el.innerHTML = '';
-        projects.forEach(p=>{ const d=document.createElement('div'); d.className='list-item'; d.innerHTML=`<div>${p.name}</div><div class="small muted">owner: ${p.ownerId}</div>`; el.appendChild(d); })
-      } catch(e){ document.getElementById('projects-list').innerHTML='Unable to load projects'; }
+        const response = await api.request('/api/projects');
+        const projects = Array.isArray(response) ? response : (response.data || []);
+        
+        if (projects.length === 0) {
+          list.innerHTML = `
+            <li class="muted center" style="padding: 40px;">
+              <div style="font-size: 48px; margin-bottom: 16px; opacity: 0.3;">📁</div>
+              <div style="font-size: 16px;">No projects yet</div>
+              <div style="font-size: 14px; margin-top: 8px;">Create your first project to organize your work</div>
+            </li>
+          `;
+          return;
+        }
+
+        list.innerHTML = '';
+        projects.forEach(project => {
+          const li = document.createElement('li');
+          li.className = 'list-item';
+          li.style.cursor = 'pointer';
+          li.onclick = () => window.location.href = '/dashboard.html?projectId=' + encodeURIComponent(project._id);
+          
+          const desc = project.description ? `<div class="muted small">${escapeHtml(project.description)}</div>` : '';
+          
+          li.innerHTML = `
+            <div>
+              <div style="font-weight: 600; margin-bottom: 4px;">${escapeHtml(project.name)}</div>
+              ${desc}
+              <div class="muted small" style="margin-top: 8px;">
+                Created ${new Date(project.createdAt).toLocaleDateString()}
+              </div>
+            </div>
+          `;
+          
+          list.appendChild(li);
+        });
+      } catch (err) {
+        const errorMsg = err.userMessage || 'Unable to load projects';
+        list.innerHTML = `<li class="muted center" style="padding: 40px;">${escapeHtml(errorMsg)}</li>`;
+      }
     }
-    load();
+
+    async function createProject(e) {
+      e.preventDefault();
+      
+      const nameEl = document.getElementById('project-name');
+      const descEl = document.getElementById('project-description');
+      
+      const name = nameEl.value.trim();
+      const description = descEl.value.trim();
+      
+      if (!name) {
+        showToast('Project name is required', 'error', 2000);
+        return;
+      }
+      
+      try {
+        const btn = e.target.querySelector('button[type=submit]');
+        btn.disabled = true;
+        
+        await api.request('/api/projects', {
+          method: 'POST',
+          body: { name, description }
+        });
+        
+        nameEl.value = '';
+        descEl.value = '';
+        
+        showToast('Project created successfully!', 'success', 1500);
+        await loadProjects();
+        
+        btn.disabled = false;
+      } catch (err) {
+        const errorMsg = err.userMessage || err.error || 'Failed to create project';
+        showToast(errorMsg, 'error', 3000);
+        e.target.querySelector('button[type=submit]').disabled = false;
+      }
+    }
+
+    // Event listeners
+    document.getElementById('create-project-form').addEventListener('submit', createProject);
+    
+    // Initialize
+    renderAuthActions();
+    loadProjects();
   </script>
 </body>
 </html>
