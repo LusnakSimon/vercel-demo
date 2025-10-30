@@ -1,0 +1,352 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>My Contacts - Notes App</title>
+  <link rel="stylesheet" href="/styles.css">
+</head>
+<body>
+  <div id="app"></div>
+
+  <script type="module">
+    import { auth } from './auth.js';
+    import { api } from './api.js';
+    import { renderAuthActions, showToast } from './app.js';
+
+    let currentUser = null;
+    let contacts = [];
+    let allProjects = [];
+
+    async function init() {
+      renderAuthActions();
+      
+      try {
+        currentUser = await auth.getCurrentUser();
+        if (!currentUser) {
+          window.location.href = '/login.html';
+          return;
+        }
+      } catch (err) {
+        console.log('Not authenticated');
+        window.location.href = '/login.html';
+        return;
+      }
+
+      await loadContacts();
+      await loadProjects();
+      renderPage();
+    }
+
+    async function loadContacts() {
+      try {
+        contacts = await api.request('/api/contacts');
+      } catch (err) {
+        showToast('Failed to load contacts', 'error', 3000);
+        contacts = [];
+      }
+    }
+
+    async function loadProjects() {
+      try {
+        allProjects = await api.request('/api/projects');
+      } catch (err) {
+        allProjects = [];
+      }
+    }
+
+    function renderPage() {
+      const app = document.getElementById('app');
+      app.innerHTML = `
+        <div class="page-container">
+          <div class="page-header">
+            <div>
+              <h1 class="page-title">👥 My Contacts</h1>
+              <p class="page-subtitle">Manage your frequent collaborators</p>
+            </div>
+            <button class="btn btn-secondary" onclick="window.location.href='/dashboard.html'">
+              ← Back to Dashboard
+            </button>
+          </div>
+
+          <div class="search-container" style="margin-bottom: 24px;">
+            <input 
+              type="email" 
+              id="add-contact-input" 
+              placeholder="Enter email to add contact..." 
+              class="form-input"
+              style="flex: 1;"
+            >
+            <button class="btn btn-primary" onclick="addContactByEmail()">
+              ➕ Add Contact
+            </button>
+          </div>
+
+          ${contacts.length === 0 ? `
+            <div class="empty-state">
+              <div class="empty-icon">👥</div>
+              <h3>No contacts yet</h3>
+              <p>Add contacts to quickly invite them to projects</p>
+            </div>
+          ` : `
+            <div class="contacts-grid">
+              ${contacts.map(contact => `
+                <div class="contact-card">
+                  <div class="contact-header">
+                    <div class="contact-avatar">${contact.name ? contact.name[0].toUpperCase() : '?'}</div>
+                    <div class="contact-info">
+                      <div class="contact-name">${contact.name || 'Unknown'}</div>
+                      <div class="contact-email">${contact.email}</div>
+                    </div>
+                  </div>
+                  <div class="contact-actions">
+                    <button 
+                      class="btn btn-small btn-secondary" 
+                      onclick="viewProfile('${contact._id}')"
+                      title="View profile"
+                    >
+                      👤 Profile
+                    </button>
+                    <button 
+                      class="btn btn-small btn-secondary" 
+                      onclick="showInviteModal('${contact._id}', '${contact.name || contact.email}')"
+                      title="Invite to project"
+                    >
+                      📨 Invite
+                    </button>
+                    <button 
+                      class="btn btn-small btn-danger" 
+                      onclick="removeContact('${contact._id}')"
+                      title="Remove contact"
+                    >
+                      ❌
+                    </button>
+                  </div>
+                </div>
+              `).join('')}
+            </div>
+          `}
+        </div>
+
+        <!-- Invite to Project Modal -->
+        <div id="invite-modal" class="modal">
+          <div class="modal-content">
+            <h2>Invite to Project</h2>
+            <p id="invite-user-name"></p>
+            <select id="project-select" class="form-input">
+              <option value="">Select a project...</option>
+              ${allProjects.map(p => `
+                <option value="${p._id}">${p.name}</option>
+              `).join('')}
+            </select>
+            <div style="display: flex; gap: 8px; margin-top: 16px;">
+              <button class="btn btn-secondary" onclick="closeInviteModal()">Cancel</button>
+              <button class="btn btn-primary" onclick="sendInvite()">Send Invitation</button>
+            </div>
+          </div>
+        </div>
+      `;
+    }
+
+    window.addContactByEmail = async function() {
+      const input = document.getElementById('add-contact-input');
+      const email = input.value.trim();
+
+      if (!email) {
+        showToast('Please enter an email', 'error', 2000);
+        return;
+      }
+
+      try {
+        // Find user by email
+        const users = await api.request('/api/users?email=' + encodeURIComponent(email));
+        if (users.length === 0) {
+          showToast('User not found', 'error', 2000);
+          return;
+        }
+
+        const user = users[0];
+        
+        // Add as contact
+        await api.request('/api/contacts', {
+          method: 'POST',
+          body: { contactId: user._id }
+        });
+
+        showToast('Contact added!', 'success', 2000);
+        input.value = '';
+        await loadContacts();
+        renderPage();
+      } catch (err) {
+        showToast(err.userMessage || 'Failed to add contact', 'error', 3000);
+      }
+    };
+
+    window.removeContact = async function(contactId) {
+      if (!confirm('Remove this contact?')) return;
+
+      try {
+        await api.request('/api/contacts?contactId=' + contactId, {
+          method: 'DELETE'
+        });
+
+        showToast('Contact removed', 'success', 2000);
+        await loadContacts();
+        renderPage();
+      } catch (err) {
+        showToast(err.userMessage || 'Failed to remove contact', 'error', 3000);
+      }
+    };
+
+    window.viewProfile = function(userId) {
+      window.location.href = '/profile.html?id=' + userId;
+    };
+
+    let selectedContactId = null;
+
+    window.showInviteModal = function(contactId, contactName) {
+      selectedContactId = contactId;
+      document.getElementById('invite-user-name').textContent = `Inviting: ${contactName}`;
+      document.getElementById('invite-modal').classList.add('active');
+    };
+
+    window.closeInviteModal = function() {
+      selectedContactId = null;
+      document.getElementById('invite-modal').classList.remove('active');
+    };
+
+    window.sendInvite = async function() {
+      const projectId = document.getElementById('project-select').value;
+      
+      if (!projectId) {
+        showToast('Please select a project', 'error', 2000);
+        return;
+      }
+
+      try {
+        await api.request('/api/invitations', {
+          method: 'POST',
+          body: {
+            projectId,
+            invitedUserId: selectedContactId
+          }
+        });
+
+        showToast('Invitation sent!', 'success', 2000);
+        closeInviteModal();
+      } catch (err) {
+        showToast(err.userMessage || 'Failed to send invitation', 'error', 3000);
+      }
+    };
+
+    // Close modal on background click
+    document.addEventListener('click', (e) => {
+      if (e.target.classList.contains('modal')) {
+        closeInviteModal();
+      }
+    });
+
+    init();
+  </script>
+
+  <style>
+    .contacts-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+      gap: 16px;
+    }
+
+    .contact-card {
+      background: var(--surface);
+      border-radius: 12px;
+      padding: 16px;
+      border: 1px solid var(--border);
+      transition: all 0.2s ease;
+    }
+
+    .contact-card:hover {
+      border-color: var(--accent);
+      transform: translateY(-2px);
+      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+    }
+
+    .contact-header {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      margin-bottom: 16px;
+    }
+
+    .contact-avatar {
+      width: 48px;
+      height: 48px;
+      border-radius: 50%;
+      background: linear-gradient(135deg, var(--accent), var(--accent-dark));
+      color: white;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 20px;
+      font-weight: 600;
+      flex-shrink: 0;
+    }
+
+    .contact-info {
+      flex: 1;
+      min-width: 0;
+    }
+
+    .contact-name {
+      font-weight: 600;
+      font-size: 16px;
+      color: var(--text);
+      margin-bottom: 4px;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
+    .contact-email {
+      font-size: 14px;
+      color: var(--text-secondary);
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
+    .contact-actions {
+      display: flex;
+      gap: 8px;
+      flex-wrap: wrap;
+    }
+
+    .btn-small {
+      padding: 6px 12px;
+      font-size: 13px;
+      flex: 1;
+      min-width: 80px;
+    }
+
+    .search-container {
+      display: flex;
+      gap: 12px;
+      align-items: center;
+    }
+
+    @media (max-width: 768px) {
+      .contacts-grid {
+        grid-template-columns: 1fr;
+      }
+
+      .search-container {
+        flex-direction: column;
+      }
+
+      .search-container .form-input,
+      .search-container .btn {
+        width: 100%;
+      }
+    }
+  </style>
+</body>
+</html>

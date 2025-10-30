@@ -1,0 +1,285 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>User Profile - Research Notebook</title>
+  <link rel="stylesheet" href="/styles.css">
+</head>
+<body>
+  <div class="container">
+    <header class="site-header">
+      <div class="brand">
+        <div class="logo">RN</div>
+        <div>
+          <h1>User Profile</h1>
+          <p class="lead">Member information</p>
+        </div>
+      </div>
+      <nav class="nav">
+        <a href="/">Home</a>
+        <a href="/dashboard.html">Dashboard</a>
+        <a href="/projects.html">Projects</a>
+        <button id="theme-toggle" title="Toggle theme" onclick="toggleTheme()">🌙</button>
+        <span id="auth-actions"></span>
+      </nav>
+    </header>
+
+    <div class="grid" style="grid-template-columns: 1fr 2fr; gap: 20px;">
+      <!-- Profile Card -->
+      <div class="card">
+        <div style="text-align: center; padding: 20px;">
+          <div style="width: 120px; height: 120px; margin: 0 auto 16px; background: linear-gradient(135deg, var(--accent), var(--accent-hover)); border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 48px; color: white;">
+            <span id="user-avatar">👤</span>
+          </div>
+          <h2 id="user-name" style="margin: 0 0 8px 0;"></h2>
+          <div id="user-email" class="muted"></div>
+          <div id="user-role" style="margin-top: 12px;"></div>
+          
+          <div id="profile-actions" style="margin-top: 20px; display: flex; flex-direction: column; gap: 8px;">
+            <button id="add-friend-btn" class="btn btn-primary" style="display: none;">
+              ➕ Add to Contacts
+            </button>
+            <button id="remove-friend-btn" class="btn btn-secondary" style="display: none;">
+              ➖ Remove from Contacts
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Activity & Projects -->
+      <div class="card">
+        <h3>Shared Projects</h3>
+        <div id="shared-projects"></div>
+
+        <h3 style="margin-top: 32px;">Recent Activity</h3>
+        <div id="user-activity"></div>
+      </div>
+    </div>
+  </div>
+
+  <script src="/app.js"></script>
+  <script>
+    const urlParams = new URLSearchParams(window.location.search);
+    const userId = urlParams.get('id');
+    let currentUser = null;
+    let profileUser = null;
+
+    if (!userId) {
+      window.location.href = '/dashboard.html';
+    }
+
+    async function loadProfile() {
+      try {
+        // Get current user
+        const me = await api.request('/api/auth/me');
+        currentUser = me.user;
+
+        // Get profile user
+        const users = await api.request('/api/users');
+        profileUser = users.find(u => String(u._id) === String(userId));
+
+        if (!profileUser) {
+          showToast('User not found', 'error', 3000);
+          setTimeout(() => window.location.href = '/dashboard.html', 2000);
+          return;
+        }
+
+        // Display profile info
+        document.getElementById('user-name').textContent = profileUser.name || 'Anonymous';
+        document.getElementById('user-email').textContent = profileUser.email;
+        
+        const roleTag = profileUser.role === 'admin' 
+          ? '<span class="tag" style="background: #ef4444;">Admin</span>'
+          : '<span class="tag">Member</span>';
+        document.getElementById('user-role').innerHTML = roleTag;
+
+        // Set avatar initial
+        const initial = (profileUser.name || profileUser.email).charAt(0).toUpperCase();
+        document.getElementById('user-avatar').textContent = initial;
+
+        // Show friend actions if not viewing own profile
+        if (String(currentUser._id) !== String(userId)) {
+          await loadFriendStatus();
+        }
+
+        // Load shared projects
+        await loadSharedProjects();
+
+        // Load recent activity
+        await loadRecentActivity();
+
+      } catch (err) {
+        showToast(err.userMessage || 'Failed to load profile', 'error', 3000);
+      }
+    }
+
+    async function loadFriendStatus() {
+      try {
+        const contacts = await api.request('/api/contacts');
+        const isFriend = contacts.some(c => String(c._id) === String(userId));
+
+        if (isFriend) {
+          document.getElementById('remove-friend-btn').style.display = 'block';
+        } else {
+          document.getElementById('add-friend-btn').style.display = 'block';
+        }
+      } catch (err) {
+        console.log('Could not load friend status:', err);
+      }
+    }
+
+    async function loadSharedProjects() {
+      const container = document.getElementById('shared-projects');
+      container.innerHTML = '<div class="muted" style="padding: 20px;">Loading...</div>';
+
+      try {
+        const allProjects = await api.request('/api/projects');
+        const sharedProjects = allProjects.filter(p => 
+          p.members && 
+          p.members.includes(String(currentUser._id)) && 
+          p.members.includes(String(userId))
+        );
+
+        if (sharedProjects.length === 0) {
+          container.innerHTML = '<div class="muted" style="padding: 20px;">No shared projects</div>';
+          return;
+        }
+
+        container.innerHTML = '<div style="display: flex; flex-direction: column; gap: 12px;"></div>';
+        const list = container.firstChild;
+
+        sharedProjects.forEach(project => {
+          const card = document.createElement('div');
+          card.style.cssText = 'padding: 12px; border: 1px solid var(--border); border-radius: var(--radius-md); cursor: pointer; transition: border-color 0.2s;';
+          card.onmouseenter = () => card.style.borderColor = 'var(--accent)';
+          card.onmouseleave = () => card.style.borderColor = 'var(--border)';
+          card.onclick = () => window.location.href = '/project.html?id=' + encodeURIComponent(project._id);
+
+          card.innerHTML = `
+            <div style="font-weight: 600; margin-bottom: 4px;">📁 ${escapeHtml(project.name)}</div>
+            <div class="muted small">${project.members ? project.members.length : 0} member(s)</div>
+          `;
+
+          list.appendChild(card);
+        });
+      } catch (err) {
+        container.innerHTML = '<div class="muted" style="padding: 20px;">Could not load projects</div>';
+      }
+    }
+
+    async function loadRecentActivity() {
+      const container = document.getElementById('user-activity');
+      container.innerHTML = '<div class="muted" style="padding: 20px;">Loading...</div>';
+
+      try {
+        // Get user's recent notes and todos
+        const [allNotes, allTodos] = await Promise.all([
+          api.request('/api/notes?limit=100'),
+          api.request('/api/todos')
+        ]);
+
+        const notes = (allNotes.data || allNotes).filter(n => 
+          String(n.authorId) === String(userId)
+        ).slice(0, 5);
+
+        const todos = allTodos.filter(t => 
+          String(t.ownerId) === String(userId)
+        ).slice(0, 5);
+
+        const activities = [];
+
+        notes.forEach(note => {
+          activities.push({
+            type: 'note',
+            title: note.title,
+            date: note.updatedAt || note.createdAt,
+            id: note._id
+          });
+        });
+
+        todos.forEach(todo => {
+          activities.push({
+            type: 'todo',
+            title: todo.title,
+            date: todo.createdAt,
+            done: todo.done
+          });
+        });
+
+        // Sort by date
+        activities.sort((a, b) => new Date(b.date) - new Date(a.date));
+
+        if (activities.length === 0) {
+          container.innerHTML = '<div class="muted" style="padding: 20px;">No recent activity</div>';
+          return;
+        }
+
+        container.innerHTML = '<ul style="list-style: none; padding: 0; margin: 0;"></ul>';
+        const list = container.firstChild;
+
+        activities.slice(0, 10).forEach(activity => {
+          const li = document.createElement('li');
+          li.style.cssText = 'padding: 12px; border-bottom: 1px solid var(--border);';
+
+          const icon = activity.type === 'note' ? '📝' : (activity.done ? '✅' : '⭕');
+          const date = new Date(activity.date).toLocaleDateString();
+
+          li.innerHTML = `
+            <div style="display: flex; align-items: start; gap: 12px;">
+              <span style="font-size: 20px;">${icon}</span>
+              <div style="flex: 1;">
+                <div style="font-weight: 500;">${escapeHtml(activity.title)}</div>
+                <div class="muted small">${date}</div>
+              </div>
+            </div>
+          `;
+
+          list.appendChild(li);
+        });
+      } catch (err) {
+        container.innerHTML = '<div class="muted" style="padding: 20px;">Could not load activity</div>';
+      }
+    }
+
+    async function addToContacts() {
+      try {
+        document.getElementById('add-friend-btn').disabled = true;
+        await api.request('/api/contacts', {
+          method: 'POST',
+          body: { contactId: userId }
+        });
+        showToast('Added to contacts!', 'success', 2000);
+        document.getElementById('add-friend-btn').style.display = 'none';
+        document.getElementById('remove-friend-btn').style.display = 'block';
+      } catch (err) {
+        showToast(err.userMessage || 'Failed to add contact', 'error', 3000);
+        document.getElementById('add-friend-btn').disabled = false;
+      }
+    }
+
+    async function removeFromContacts() {
+      try {
+        document.getElementById('remove-friend-btn').disabled = true;
+        await api.request('/api/contacts?contactId=' + encodeURIComponent(userId), {
+          method: 'DELETE'
+        });
+        showToast('Removed from contacts', 'success', 2000);
+        document.getElementById('remove-friend-btn').style.display = 'none';
+        document.getElementById('add-friend-btn').style.display = 'block';
+      } catch (err) {
+        showToast(err.userMessage || 'Failed to remove contact', 'error', 3000);
+        document.getElementById('remove-friend-btn').disabled = false;
+      }
+    }
+
+    // Event listeners
+    document.getElementById('add-friend-btn').addEventListener('click', addToContacts);
+    document.getElementById('remove-friend-btn').addEventListener('click', removeFromContacts);
+
+    // Initialize
+    renderAuthActions();
+    loadProfile();
+  </script>
+</body>
+</html>
