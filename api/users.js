@@ -9,9 +9,19 @@ module.exports = async (req, res) => {
     const authUser = await getUserFromRequest(req);
 
     if (req.method === 'GET') {
-      // Only admin can list users
-      if (!requireRole(authUser, 'admin')) return res.status(403).json({ error: 'forbidden' });
-      const list = await users.find({}, { projection: { passwordHash: 0 } }).toArray();
+      const { email } = req.query || {};
+      
+      // Allow authenticated users to search by email (for inviting to projects)
+      if (email) {
+        if (!authUser) return res.status(401).json({ error: 'unauthenticated' });
+        const user = await users.findOne({ email: String(email).toLowerCase() }, { projection: { passwordHash: 0 } });
+        if (!user) return res.status(404).json({ error: 'user not found' });
+        return res.status(200).json(user);
+      }
+      
+      // Listing all users: allow for authenticated users (needed for project collaboration)
+      if (!authUser) return res.status(401).json({ error: 'unauthenticated' });
+      const list = await users.find({}, { projection: { passwordHash: 0, password: 0 } }).limit(100).toArray();
       return res.status(200).json(list);
     }
 

@@ -22,10 +22,16 @@ module.exports = async (req, res) => {
       const auth = require('../lib/auth');
       const user = await auth.requireAuth(req, res);
       if (!user) return null; // response already sent by requireAuth
-      const { name } = req.body || {};
+      const { name, description } = req.body || {};
       const { requireString } = require('../lib/validate');
       if (!requireString(name, 2)) return res.status(400).json({ error: 'name required (min 2 chars)' });
-      const doc = { name: name.trim(), ownerId: String(user._id), createdAt: new Date() };
+      const doc = { 
+        name: name.trim(), 
+        description: description ? String(description).trim() : '',
+        ownerId: String(user._id), 
+        members: [String(user._id)], // Creator is automatically a member
+        createdAt: new Date() 
+      };
       const r = await projects.insertOne(doc);
       doc._id = r.insertedId;
       return res.status(201).json(doc);

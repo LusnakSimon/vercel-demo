@@ -1,0 +1,447 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>Project Details - Research Notebook</title>
+  <link rel="stylesheet" href="/styles.css">
+</head>
+<body>
+  <div class="container">
+    <header class="site-header">
+      <div class="brand">
+        <div class="logo">RN</div>
+        <div>
+          <h1 id="project-name">Project</h1>
+          <p class="lead" id="project-description"></p>
+        </div>
+      </div>
+      <nav class="nav">
+        <a href="/">Home</a>
+        <a href="/dashboard.html">Dashboard</a>
+        <a href="/projects.html">Projects</a>
+        <button id="theme-toggle" title="Toggle theme" onclick="toggleTheme()">🌙</button>
+        <span id="auth-actions"></span>
+      </nav>
+    </header>
+
+    <div class="card" style="margin-bottom: 20px;">
+      <div style="display: flex; justify-content: space-between; align-items: start; flex-wrap: wrap; gap: 16px;">
+        <div style="flex: 1; min-width: 200px;">
+          <h2 style="margin: 0 0 8px 0;">Project Info</h2>
+          <div class="muted" id="project-meta"></div>
+        </div>
+        <div style="display: flex; gap: 8px; flex-wrap: wrap;">
+          <button id="invite-member-btn" class="btn btn-primary">+ Invite Member</button>
+          <button id="edit-project-btn" class="btn btn-secondary">Edit Project</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Members Section -->
+    <div class="card" style="margin-bottom: 20px;">
+      <h3>Team Members</h3>
+      <div id="members-list"></div>
+    </div>
+
+    <!-- Tabs -->
+    <div class="tabs" style="margin-bottom: 20px;">
+      <button class="tab-btn active" data-tab="notes">📝 Notes</button>
+      <button class="tab-btn" data-tab="todos">✓ Todos</button>
+    </div>
+
+    <!-- Notes Tab -->
+    <div id="tab-notes" class="tab-content active">
+      <div class="card">
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; flex-wrap: wrap; gap: 12px;">
+          <h3 style="margin: 0;">Project Notes</h3>
+          <a href="#" id="create-note-btn" class="btn btn-primary">+ New Note</a>
+        </div>
+        <div id="project-notes-list"></div>
+      </div>
+    </div>
+
+    <!-- Todos Tab -->
+    <div id="tab-todos" class="tab-content" style="display: none;">
+      <div class="card">
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; flex-wrap: wrap; gap: 12px;">
+          <h3 style="margin: 0;">Project Todos</h3>
+          <button id="create-todo-btn" class="btn btn-primary">+ New Todo</button>
+        </div>
+        <div id="project-todos-list"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Invite Member Modal -->
+  <div id="invite-modal" class="modal">
+    <div class="modal-content">
+      <h3>Invite Team Member</h3>
+      <form id="invite-form" class="stack">
+        <div>
+          <label for="member-email">Email Address</label>
+          <input id="member-email" type="email" placeholder="teammate@example.com" required />
+          <div class="muted small" style="margin-top: 4px;">Enter the email of the user you want to invite</div>
+        </div>
+        <div style="display: flex; gap: 8px; justify-content: flex-end;">
+          <button type="button" class="btn btn-secondary" onclick="closeModal('invite-modal')">Cancel</button>
+          <button type="submit" class="btn btn-primary">Send Invite</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- Edit Project Modal -->
+  <div id="edit-modal" class="modal">
+    <div class="modal-content">
+      <h3>Edit Project</h3>
+      <form id="edit-form" class="stack">
+        <div>
+          <label for="edit-name">Project Name</label>
+          <input id="edit-name" type="text" required />
+        </div>
+        <div>
+          <label for="edit-description">Description</label>
+          <textarea id="edit-description" rows="3"></textarea>
+        </div>
+        <div style="display: flex; gap: 8px; justify-content: flex-end;">
+          <button type="button" class="btn btn-secondary" onclick="closeModal('edit-modal')">Cancel</button>
+          <button type="submit" class="btn btn-primary">Save Changes</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <script src="/app.js"></script>
+  <script>
+    const urlParams = new URLSearchParams(window.location.search);
+    const projectId = urlParams.get('id');
+    let currentProject = null;
+    let currentUser = null;
+
+    if (!projectId) {
+      window.location.href = '/projects.html';
+    }
+
+    async function loadProject() {
+      try {
+        const response = await api.request('/api/projects?id=' + encodeURIComponent(projectId));
+        currentProject = response;
+        
+        document.getElementById('project-name').textContent = currentProject.name;
+        document.getElementById('project-description').textContent = currentProject.description || 'No description';
+        
+        const createdDate = new Date(currentProject.createdAt).toLocaleDateString();
+        document.getElementById('project-meta').innerHTML = `
+          Created ${createdDate} • ${currentProject.members ? currentProject.members.length : 0} member(s)
+        `;
+        
+        // Populate edit form
+        document.getElementById('edit-name').value = currentProject.name;
+        document.getElementById('edit-description').value = currentProject.description || '';
+        
+      } catch (err) {
+        showToast(err.userMessage || 'Failed to load project', 'error', 3000);
+        setTimeout(() => window.location.href = '/projects.html', 2000);
+      }
+    }
+
+    async function loadMembers() {
+      const list = document.getElementById('members-list');
+      
+      if (!currentProject || !currentProject.members || currentProject.members.length === 0) {
+        list.innerHTML = '<div class="muted" style="padding: 20px; text-align: center;">No team members yet</div>';
+        return;
+      }
+      
+      try {
+        // In a real app, you'd fetch user details for each member ID
+        // For now, just show the member IDs
+        list.innerHTML = '<div style="display: flex; flex-wrap: wrap; gap: 12px;">';
+        currentProject.members.forEach(memberId => {
+          const isCurrentUser = currentUser && String(currentUser._id) === String(memberId);
+          const chip = document.createElement('div');
+          chip.style.cssText = 'padding: 8px 16px; background: var(--surface); border: 1px solid var(--border); border-radius: 20px; display: flex; align-items: center; gap: 8px;';
+          chip.innerHTML = `
+            <span style="font-size: 18px;">👤</span>
+            <span>${memberId.substring(0, 8)}...</span>
+            ${isCurrentUser ? '<span class="tag" style="margin-left: 4px;">You</span>' : ''}
+          `;
+          list.firstChild.appendChild(chip);
+        });
+        list.innerHTML += '</div>';
+      } catch (err) {
+        console.error('Failed to load members:', err);
+      }
+    }
+
+    async function loadNotes() {
+      const list = document.getElementById('project-notes-list');
+      list.innerHTML = '<div class="muted center" style="padding: 30px;"><div class="spinner" style="margin: 0 auto 12px;"></div>Loading...</div>';
+      
+      try {
+        const response = await api.request('/api/notes?projectId=' + encodeURIComponent(projectId) + '&limit=50');
+        const notes = response.data || response;
+        
+        if (!notes || notes.length === 0) {
+          list.innerHTML = `
+            <div class="muted center" style="padding: 40px;">
+              <div style="font-size: 48px; margin-bottom: 12px; opacity: 0.3;">📝</div>
+              <div>No notes in this project yet</div>
+            </div>
+          `;
+          return;
+        }
+        
+        list.innerHTML = '';
+        notes.forEach(note => {
+          const card = document.createElement('div');
+          card.style.cssText = 'padding: 12px; margin-bottom: 8px; border: 1px solid var(--border); border-radius: var(--radius-md); cursor: pointer; transition: border-color 0.2s;';
+          card.onmouseenter = () => card.style.borderColor = 'var(--accent)';
+          card.onmouseleave = () => card.style.borderColor = 'var(--border)';
+          card.onclick = () => window.location.href = '/note.html?id=' + encodeURIComponent(note._id);
+          
+          card.innerHTML = `
+            <div style="font-weight: 600; margin-bottom: 4px;">${escapeHtml(note.title)}</div>
+            <div class="muted small">
+              Updated ${new Date(note.updatedAt || note.createdAt).toLocaleDateString()}
+            </div>
+          `;
+          
+          list.appendChild(card);
+        });
+      } catch (err) {
+        list.innerHTML = '<div class="muted center" style="padding: 30px;">' + (err.userMessage || 'Failed to load notes') + '</div>';
+      }
+    }
+
+    async function loadTodos() {
+      const list = document.getElementById('project-todos-list');
+      list.innerHTML = '<div class="muted center" style="padding: 30px;"><div class="spinner" style="margin: 0 auto 12px;"></div>Loading...</div>';
+      
+      try {
+        const todos = await api.request('/api/todos?projectId=' + encodeURIComponent(projectId));
+        
+        if (!todos || todos.length === 0) {
+          list.innerHTML = `
+            <div class="muted center" style="padding: 40px;">
+              <div style="font-size: 48px; margin-bottom: 12px; opacity: 0.3;">✓</div>
+              <div>No todos in this project yet</div>
+            </div>
+          `;
+          return;
+        }
+        
+        list.innerHTML = '<ul class="todo-list" style="margin: 0;"></ul>';
+        const ul = list.querySelector('ul');
+        
+        todos.forEach(todo => {
+          const li = document.createElement('li');
+          li.className = 'todo-item' + (todo.done ? ' done' : '');
+          li.style.cursor = 'pointer';
+          li.onclick = () => window.location.href = '/todos.html';
+          
+          li.innerHTML = `
+            <div class="todo-content">
+              <div class="todo-title">${escapeHtml(todo.title)}</div>
+              ${todo.description ? `<div class="todo-description">${escapeHtml(todo.description)}</div>` : ''}
+            </div>
+          `;
+          
+          ul.appendChild(li);
+        });
+      } catch (err) {
+        list.innerHTML = '<div class="muted center" style="padding: 30px;">' + (err.userMessage || 'Failed to load todos') + '</div>';
+      }
+    }
+
+    async function inviteMember(e) {
+      e.preventDefault();
+      
+      const email = document.getElementById('member-email').value.trim();
+      if (!email) return;
+      
+      try {
+        // First, find user by email
+        const users = await api.request('/api/users');
+        const user = users.find(u => u.email === email);
+        
+        if (!user) {
+          showToast('User not found with that email', 'error', 3000);
+          return;
+        }
+        
+        if (currentProject.members && currentProject.members.includes(String(user._id))) {
+          showToast('User is already a member', 'warning', 3000);
+          return;
+        }
+        
+        // Add member to project
+        const members = currentProject.members || [];
+        members.push(String(user._id));
+        
+        await api.request('/api/projects?id=' + encodeURIComponent(projectId), {
+          method: 'PUT',
+          body: { members }
+        });
+        
+        showToast('Member invited successfully!', 'success', 2000);
+        closeModal('invite-modal');
+        document.getElementById('member-email').value = '';
+        await loadProject();
+        await loadMembers();
+      } catch (err) {
+        showToast(err.userMessage || 'Failed to invite member', 'error', 3000);
+      }
+    }
+
+    async function updateProject(e) {
+      e.preventDefault();
+      
+      const name = document.getElementById('edit-name').value.trim();
+      const description = document.getElementById('edit-description').value.trim();
+      
+      if (!name) {
+        showToast('Project name is required', 'error', 2000);
+        return;
+      }
+      
+      try {
+        await api.request('/api/projects?id=' + encodeURIComponent(projectId), {
+          method: 'PUT',
+          body: { name, description }
+        });
+        
+        showToast('Project updated successfully!', 'success', 2000);
+        closeModal('edit-modal');
+        await loadProject();
+      } catch (err) {
+        showToast(err.userMessage || 'Failed to update project', 'error', 3000);
+      }
+    }
+
+    function openModal(modalId) {
+      document.getElementById(modalId).classList.add('active');
+    }
+
+    function closeModal(modalId) {
+      document.getElementById(modalId).classList.remove('active');
+    }
+
+    // Tab switching
+    document.querySelectorAll('.tab-btn').forEach(btn => {
+      btn.addEventListener('click', () => {
+        const tab = btn.dataset.tab;
+        
+        // Update buttons
+        document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+        btn.classList.add('active');
+        
+        // Update content
+        document.querySelectorAll('.tab-content').forEach(c => c.style.display = 'none');
+        document.getElementById('tab-' + tab).style.display = 'block';
+      });
+    });
+
+    // Event listeners
+    document.getElementById('invite-member-btn').addEventListener('click', () => openModal('invite-modal'));
+    document.getElementById('edit-project-btn').addEventListener('click', () => openModal('edit-modal'));
+    document.getElementById('invite-form').addEventListener('submit', inviteMember);
+    document.getElementById('edit-form').addEventListener('submit', updateProject);
+    
+    document.getElementById('create-note-btn').addEventListener('click', (e) => {
+      e.preventDefault();
+      window.location.href = '/note.html?projectId=' + encodeURIComponent(projectId);
+    });
+    
+    document.getElementById('create-todo-btn').addEventListener('click', () => {
+      window.location.href = '/todos.html?projectId=' + encodeURIComponent(projectId);
+    });
+
+    // Close modals on background click
+    document.querySelectorAll('.modal').forEach(modal => {
+      modal.addEventListener('click', (e) => {
+        if (e.target === modal) {
+          closeModal(modal.id);
+        }
+      });
+    });
+
+    // Initialize
+    async function init() {
+      renderAuthActions();
+      
+      try {
+        const me = await api.request('/api/auth/me');
+        currentUser = me.user;
+      } catch (err) {
+        console.log('Not authenticated');
+      }
+      
+      await loadProject();
+      await loadMembers();
+      await loadNotes();
+      await loadTodos();
+    }
+    
+    init();
+  </script>
+  
+  <style>
+    .tabs {
+      display: flex;
+      gap: 8px;
+      border-bottom: 2px solid var(--border);
+    }
+    
+    .tab-btn {
+      padding: 12px 24px;
+      background: none;
+      border: none;
+      border-bottom: 2px solid transparent;
+      margin-bottom: -2px;
+      cursor: pointer;
+      color: var(--text-secondary);
+      font-size: 15px;
+      font-weight: 500;
+      transition: all 0.2s;
+    }
+    
+    .tab-btn:hover {
+      color: var(--text-primary);
+      background: var(--surface);
+    }
+    
+    .tab-btn.active {
+      color: var(--accent);
+      border-bottom-color: var(--accent);
+    }
+    
+    .modal {
+      display: none;
+      position: fixed;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      background: rgba(0, 0, 0, 0.6);
+      z-index: 1000;
+      align-items: center;
+      justify-content: center;
+    }
+    
+    .modal.active {
+      display: flex;
+    }
+    
+    .modal-content {
+      background: var(--bg);
+      padding: 24px;
+      border-radius: var(--radius-lg);
+      max-width: 500px;
+      width: 90%;
+      box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+    }
+  </style>
+</body>
+</html>

@@ -1,0 +1,218 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>Notes - Research Notebook</title>
+  <link rel="stylesheet" href="/styles.css">
+</head>
+<body>
+  <div class="container">
+    <header class="site-header">
+      <div class="brand">
+        <div class="logo">RN</div>
+        <div>
+          <h1>Notes</h1>
+          <p class="lead">Your research notes</p>
+        </div>
+      </div>
+      <nav class="nav">
+        <a href="/">Home</a>
+        <a href="/dashboard.html">Dashboard</a>
+        <a href="/todos.html">Todos</a>
+        <a href="/projects.html">Projects</a>
+        <button id="theme-toggle" title="Toggle theme" onclick="toggleTheme()">🌙</button>
+        <span id="auth-actions"></span>
+      </nav>
+    </header>
+
+    <div class="card">
+      <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; flex-wrap: wrap; gap: 12px;">
+        <h2 style="margin: 0;">Your Notes</h2>
+        <a href="/note.html" class="btn btn-primary">+ New Note</a>
+      </div>
+
+      <div class="search-filters" style="margin-bottom: 20px;">
+        <input 
+          type="text" 
+          id="search-input" 
+          placeholder="Search notes..." 
+          style="flex: 1; min-width: 200px;"
+        />
+        <select id="project-filter" style="min-width: 150px;">
+          <option value="">All Projects</option>
+        </select>
+        <button id="search-btn" class="btn btn-secondary">Search</button>
+      </div>
+
+      <div id="notes-list"></div>
+
+      <div id="pagination-controls" style="display: none; margin-top: 20px; text-align: center;">
+        <button id="prev-page" class="btn btn-secondary" style="margin-right: 8px;">← Previous</button>
+        <span id="page-info" style="margin: 0 16px; color: var(--text-secondary);"></span>
+        <button id="next-page" class="btn btn-secondary">Next →</button>
+      </div>
+    </div>
+  </div>
+
+  <script src="/app.js"></script>
+  <script>
+    let currentPage = 1;
+    let totalPages = 1;
+    let currentSearch = '';
+    let currentProject = '';
+
+    async function loadNotes() {
+      const list = document.getElementById('notes-list');
+      list.innerHTML = '<div class="muted center" style="padding: 40px;"><div class="spinner" style="margin: 0 auto 12px;"></div>Loading notes...</div>';
+      
+      try {
+        const params = new URLSearchParams({ page: currentPage, limit: 20 });
+        if (currentSearch) params.append('q', currentSearch);
+        if (currentProject) params.append('projectId', currentProject);
+
+        const response = await api.request('/api/notes?' + params.toString());
+        const notes = response.data || response;
+        const pagination = response.pagination;
+
+        if (pagination) {
+          totalPages = pagination.totalPages;
+          document.getElementById('page-info').textContent = `Page ${pagination.page} of ${pagination.totalPages} (${pagination.total} notes)`;
+          document.getElementById('prev-page').disabled = !pagination.hasPrev;
+          document.getElementById('next-page').disabled = !pagination.hasNext;
+          document.getElementById('pagination-controls').style.display = pagination.totalPages > 1 ? 'block' : 'none';
+        }
+
+        if (!notes || notes.length === 0) {
+          list.innerHTML = `
+            <div class="muted center" style="padding: 60px;">
+              <div style="font-size: 64px; margin-bottom: 16px; opacity: 0.3;">📝</div>
+              <div style="font-size: 18px; margin-bottom: 8px;">No notes yet</div>
+              <div style="font-size: 14px; margin-bottom: 20px; color: var(--text-secondary);">
+                ${currentSearch || currentProject ? 'Try adjusting your filters' : 'Create your first note to get started'}
+              </div>
+              <a href="/note.html" class="btn btn-primary">Create Note</a>
+            </div>
+          `;
+          return;
+        }
+
+        list.innerHTML = '';
+        notes.forEach(note => {
+          const card = document.createElement('div');
+          card.className = 'note-card';
+          card.style.cssText = 'padding: 16px; margin-bottom: 12px; border: 1px solid var(--border); border-radius: var(--radius-md); cursor: pointer; transition: all 0.2s;';
+          card.onmouseenter = () => card.style.borderColor = 'var(--accent)';
+          card.onmouseleave = () => card.style.borderColor = 'var(--border)';
+          card.onclick = () => window.location.href = '/note.html?id=' + encodeURIComponent(note._id);
+
+          const preview = note.bodyMarkdown ? note.bodyMarkdown.substring(0, 150) : '';
+          const tags = note.tags && note.tags.length > 0 
+            ? note.tags.map(t => `<span class="tag">${escapeHtml(t)}</span>`).join(' ')
+            : '';
+
+          card.innerHTML = `
+            <div style="display: flex; justify-content: space-between; align-items: start; margin-bottom: 8px;">
+              <h3 style="margin: 0; font-size: 18px;">${escapeHtml(note.title)}</h3>
+              <button 
+                class="btn btn-sm btn-secondary" 
+                onclick="event.stopPropagation(); exportNote('${note._id}')"
+                title="Export as Markdown"
+                style="margin-left: 12px;"
+              >
+                ⬇️
+              </button>
+            </div>
+            ${preview ? `<div class="muted" style="margin-bottom: 8px; line-height: 1.5;">${escapeHtml(preview)}${preview.length >= 150 ? '...' : ''}</div>` : ''}
+            ${tags ? `<div style="margin-bottom: 8px;">${tags}</div>` : ''}
+            <div class="muted small">
+              ${note.projectId ? `<span style="margin-right: 12px;">📁 Project</span>` : ''}
+              Updated ${new Date(note.updatedAt || note.createdAt).toLocaleDateString()}
+            </div>
+          `;
+          
+          list.appendChild(card);
+        });
+      } catch (err) {
+        const errorMsg = err.userMessage || 'Unable to load notes';
+        list.innerHTML = `<div class="muted center" style="padding: 40px;">${escapeHtml(errorMsg)}</div>`;
+      }
+    }
+
+    async function loadProjects() {
+      try {
+        const response = await api.request('/api/projects');
+        const projects = Array.isArray(response) ? response : (response.data || []);
+        const select = document.getElementById('project-filter');
+        
+        projects.forEach(project => {
+          const option = document.createElement('option');
+          option.value = project._id;
+          option.textContent = project.name;
+          select.appendChild(option);
+        });
+      } catch (err) {
+        console.error('Failed to load projects:', err);
+      }
+    }
+
+    async function exportNote(noteId) {
+      try {
+        const note = await api.request('/api/notes?id=' + encodeURIComponent(noteId));
+        const filename = note.title.replace(/[^a-z0-9]/gi, '_').toLowerCase() + '.md';
+        const content = `# ${note.title}\n\n${note.bodyMarkdown || ''}`;
+        
+        const blob = new Blob([content], { type: 'text/markdown' });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = filename;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        URL.revokeObjectURL(url);
+        
+        showToast('Note exported as ' + filename, 'success', 2000);
+      } catch (err) {
+        const errorMsg = err.userMessage || 'Failed to export note';
+        showToast(errorMsg, 'error', 3000);
+      }
+    }
+
+    function handleSearch() {
+      currentSearch = document.getElementById('search-input').value.trim();
+      currentProject = document.getElementById('project-filter').value;
+      currentPage = 1;
+      loadNotes();
+    }
+
+    // Event listeners
+    document.getElementById('search-btn').addEventListener('click', handleSearch);
+    document.getElementById('search-input').addEventListener('keypress', (e) => {
+      if (e.key === 'Enter') handleSearch();
+    });
+    document.getElementById('project-filter').addEventListener('change', handleSearch);
+    
+    document.getElementById('prev-page').addEventListener('click', () => {
+      if (currentPage > 1) {
+        currentPage--;
+        loadNotes();
+        window.scrollTo(0, 0);
+      }
+    });
+    
+    document.getElementById('next-page').addEventListener('click', () => {
+      if (currentPage < totalPages) {
+        currentPage++;
+        loadNotes();
+        window.scrollTo(0, 0);
+      }
+    });
+
+    // Initialize
+    renderAuthActions();
+    loadProjects();
+    loadNotes();
+  </script>
+</body>
+</html>
