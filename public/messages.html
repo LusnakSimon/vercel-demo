@@ -1,0 +1,343 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>Messages - Research Notebook</title>
+  <link rel="stylesheet" href="/styles.css">
+</head>
+<body>
+  <div class="container">
+    <header class="site-header">
+      <div class="brand">
+        <div class="logo">RN</div>
+        <div>
+          <h1>Messages</h1>
+          <p class="lead">Your private conversations</p>
+        </div>
+      </div>
+      <nav class="nav">
+        <a href="/dashboard.html">Dashboard</a>
+        <a href="/projects.html">Projects</a>
+        <a href="/todos.html">Todos</a>
+        <a href="/notes.html">Notes</a>
+        <a href="/contacts.html">Contacts</a>
+        <button id="theme-toggle" title="Toggle theme" onclick="toggleTheme()">🌙</button>
+        <span id="auth-actions"></span>
+      </nav>
+    </header>
+
+    <div class="grid" style="grid-template-columns: 300px 1fr; gap: 20px; min-height: 600px;">
+      <!-- Conversations List -->
+      <div class="card" style="max-height: 600px; overflow-y: auto;">
+        <h3 style="margin: 0 0 16px 0;">💬 Conversations</h3>
+        <div id="conversations-list"></div>
+      </div>
+
+      <!-- Active Conversation -->
+      <div class="card" style="display: flex; flex-direction: column; height: 600px;">
+        <div id="conversation-header" style="border-bottom: 1px solid var(--border); padding-bottom: 12px; margin-bottom: 16px;">
+          <div id="no-conversation" style="text-align: center; padding: 40px; color: var(--text-secondary);">
+            <div style="font-size: 64px; margin-bottom: 16px; opacity: 0.3;">💬</div>
+            <h3 style="margin: 0 0 8px 0; color: var(--text);">Select a conversation</h3>
+            <p style="margin: 0;">Choose a contact to start messaging</p>
+          </div>
+          <div id="active-conversation" style="display: none;">
+            <div style="display: flex; align-items: center; gap: 12px;">
+              <div id="active-avatar" style="width: 40px; height: 40px; border-radius: 50%; background: linear-gradient(135deg, var(--accent), var(--accent-dark)); color: white; display: flex; align-items: center; justify-content: center; font-weight: 600;"></div>
+              <div>
+                <h3 id="active-name" style="margin: 0; font-size: 16px;"></h3>
+                <div id="active-email" class="muted small"></div>
+              </div>
+            </div>
+          </div>
+        </div>
+        
+        <div id="messages-container" style="flex: 1; overflow-y: auto; padding: 16px; background: var(--surface); border-radius: 8px; margin-bottom: 16px; border: 1px solid var(--border); display: none;">
+        </div>
+        
+        <form id="message-form" style="display: none; gap: 12px; align-items: center;">
+          <input 
+            id="message-input" 
+            type="text" 
+            placeholder="Type a message... (Max 5000 characters)" 
+            class="form-input"
+            style="flex: 1; margin: 0;"
+            maxlength="5000"
+            autocomplete="off"
+          />
+          <button type="submit" class="btn btn-primary" style="padding: 12px 24px;">
+            📨 Send
+          </button>
+        </form>
+      </div>
+    </div>
+  </div>
+
+  <script src="/app.js"></script>
+  <script>
+    let currentUser = null;
+    let conversations = [];
+    let activeConversation = null;
+    let eventSource = null;
+
+    async function init() {
+      renderAuthActions();
+      
+      try {
+        const me = await api.request('/api/auth/me');
+        currentUser = me.user;
+      } catch (err) {
+        console.log('Not authenticated');
+        window.location.href = '/login.html';
+        return;
+      }
+
+      await loadConversations();
+      setupRealtime();
+      
+      // Check if opening a specific conversation from URL
+      const params = new URLSearchParams(window.location.search);
+      const userId = params.get('with');
+      if (userId) {
+        openConversation(userId);
+      }
+    }
+
+    async function loadConversations() {
+      try {
+        conversations = await api.request('/api/direct-messages');
+        renderConversations();
+      } catch (err) {
+        showToast('Failed to load conversations', 'error', 3000);
+      }
+    }
+
+    function renderConversations() {
+      const list = document.getElementById('conversations-list');
+      
+      if (!conversations || conversations.length === 0) {
+        list.innerHTML = `
+          <div style="text-align: center; padding: 40px 20px; color: var(--text-secondary);">
+            <div style="font-size: 48px; margin-bottom: 12px; opacity: 0.3;">📭</div>
+            <p style="margin: 0; font-size: 14px;">No conversations yet</p>
+          </div>
+        `;
+        return;
+      }
+
+      list.innerHTML = conversations.map(conv => {
+        const user = conv.user;
+        const initial = user.name ? user.name[0].toUpperCase() : '?';
+        const lastMsg = conv.lastMessage.content.substring(0, 50);
+        const time = new Date(conv.lastMessage.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+        const isActive = activeConversation === conv.userId;
+        
+        return `
+          <div 
+            class="conversation-item ${isActive ? 'active' : ''}"
+            onclick="openConversation('${conv.userId}')"
+            style="cursor: pointer; padding: 12px; border-radius: 8px; margin-bottom: 8px; transition: all 0.2s; ${isActive ? 'background: var(--accent); color: white;' : 'background: var(--surface);'} border: 1px solid ${isActive ? 'var(--accent)' : 'var(--border)'};"
+            onmouseenter="if (!this.classList.contains('active')) this.style.background = 'var(--background)'"
+            onmouseleave="if (!this.classList.contains('active')) this.style.background = 'var(--surface)'"
+          >
+            <div style="display: flex; align-items: center; gap: 10px;">
+              <div style="width: 36px; height: 36px; border-radius: 50%; background: ${isActive ? 'rgba(255,255,255,0.2)' : 'linear-gradient(135deg, var(--accent), var(--accent-dark))'}; color: white; display: flex; align-items: center; justify-content: center; font-weight: 600; flex-shrink: 0; font-size: 14px;">
+                ${initial}
+              </div>
+              <div style="flex: 1; min-width: 0;">
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 2px;">
+                  <div style="font-weight: 600; font-size: 14px; ${isActive ? 'color: white;' : ''}">${escapeHtml(user.name || user.email)}</div>
+                  ${conv.unreadCount > 0 ? `<span style="background: #ef4444; color: white; padding: 2px 6px; border-radius: 10px; font-size: 11px; font-weight: 600;">${conv.unreadCount}</span>` : ''}
+                </div>
+                <div style="font-size: 13px; ${isActive ? 'color: rgba(255,255,255,0.8);' : 'color: var(--text-secondary);'} overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">
+                  ${escapeHtml(lastMsg)}${conv.lastMessage.content.length > 50 ? '...' : ''}
+                </div>
+                <div style="font-size: 11px; margin-top: 2px; ${isActive ? 'color: rgba(255,255,255,0.7);' : 'color: var(--text-secondary);'}">${time}</div>
+              </div>
+            </div>
+          </div>
+        `;
+      }).join('');
+    }
+
+    async function openConversation(userId) {
+      activeConversation = userId;
+      
+      // Update URL without reloading
+      const url = new URL(window.location);
+      url.searchParams.set('with', userId);
+      window.history.pushState({}, '', url);
+      
+      // Re-render conversations to update active state
+      renderConversations();
+      
+      // Show conversation UI
+      document.getElementById('no-conversation').style.display = 'none';
+      document.getElementById('active-conversation').style.display = 'block';
+      document.getElementById('messages-container').style.display = 'block';
+      document.getElementById('message-form').style.display = 'flex';
+      
+      // Load messages
+      await loadMessages(userId);
+      
+      // Mark as read
+      try {
+        await api.request('/api/direct-messages', {
+          method: 'PATCH',
+          body: { conversationWith: userId, markAsRead: true }
+        });
+        await loadConversations(); // Refresh to clear unread badges
+      } catch (err) {
+        console.error('Failed to mark as read:', err);
+      }
+    }
+
+    async function loadMessages(userId) {
+      const container = document.getElementById('messages-container');
+      container.innerHTML = '<div class="muted center" style="padding: 40px;">Loading messages...</div>';
+      
+      try {
+        const messages = await api.request('/api/direct-messages?conversationWith=' + userId + '&limit=100');
+        
+        // Get user info
+        const conv = conversations.find(c => c.userId === userId);
+        if (conv) {
+          const user = conv.user;
+          document.getElementById('active-avatar').textContent = user.name ? user.name[0].toUpperCase() : '?';
+          document.getElementById('active-name').textContent = user.name || 'Unknown';
+          document.getElementById('active-email').textContent = user.email;
+        }
+        
+        displayMessages(messages);
+        scrollToBottom();
+      } catch (err) {
+        container.innerHTML = '<div class="muted center" style="padding: 40px;">' + (err.userMessage || 'Failed to load messages') + '</div>';
+      }
+    }
+
+    function displayMessages(messages) {
+      const container = document.getElementById('messages-container');
+      
+      if (!messages || messages.length === 0) {
+        container.innerHTML = `
+          <div style="text-align: center; padding: 60px 20px; color: var(--text-secondary);">
+            <div style="font-size: 64px; margin-bottom: 16px; opacity: 0.3;">💬</div>
+            <h3 style="margin: 0 0 8px 0; color: var(--text);">No messages yet</h3>
+            <p style="margin: 0;">Start the conversation by sending the first message!</p>
+          </div>
+        `;
+        return;
+      }
+      
+      container.innerHTML = messages.map(msg => {
+        const isOwn = String(msg.senderId) === String(currentUser._id);
+        const time = new Date(msg.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+        const name = msg.sender ? (msg.sender.name || msg.sender.email) : 'Unknown';
+        
+        return `
+          <div style="margin-bottom: 16px; display: flex; ${isOwn ? 'justify-content: flex-end;' : ''}">
+            <div style="max-width: 70%; ${isOwn ? 'background: linear-gradient(135deg, var(--accent), var(--accent-dark));' : 'background: var(--surface); border: 1px solid var(--border);'} padding: 12px 16px; border-radius: 16px; ${isOwn ? 'border-bottom-right-radius: 4px;' : 'border-bottom-left-radius: 4px;'} box-shadow: 0 2px 4px rgba(0,0,0,0.1);">
+              ${!isOwn ? `<div style="font-weight: 600; margin-bottom: 6px; font-size: 13px; color: var(--accent);">${escapeHtml(name)}</div>` : ''}
+              <div style="${isOwn ? 'color: white;' : 'color: var(--text);'} word-wrap: break-word; line-height: 1.5;">${escapeHtml(msg.content)}</div>
+              <div style="font-size: 11px; margin-top: 6px; opacity: 0.7; ${isOwn ? 'color: rgba(255,255,255,0.8);' : 'color: var(--text-secondary);'}">${time}</div>
+            </div>
+          </div>
+        `;
+      }).join('');
+    }
+
+    function scrollToBottom() {
+      const container = document.getElementById('messages-container');
+      container.scrollTop = container.scrollHeight;
+    }
+
+    async function sendMessage(e) {
+      e.preventDefault();
+      
+      if (!activeConversation) return;
+      
+      const input = document.getElementById('message-input');
+      const content = input.value.trim();
+      
+      if (!content) return;
+      
+      try {
+        const btn = e.target.querySelector('button[type=submit]');
+        btn.disabled = true;
+        input.disabled = true;
+        
+        await api.request('/api/direct-messages', {
+          method: 'POST',
+          body: {
+            recipientId: activeConversation,
+            content: content
+          }
+        });
+        
+        input.value = '';
+        await loadMessages(activeConversation);
+        await loadConversations();
+      } catch (err) {
+        showToast(err.userMessage || 'Failed to send message', 'error', 3000);
+      } finally {
+        const btn = e.target.querySelector('button[type=submit]');
+        btn.disabled = false;
+        input.disabled = false;
+        input.focus();
+      }
+    }
+
+    function setupRealtime() {
+      eventSource = new EventSource('/api/realtime/updates');
+      
+      eventSource.addEventListener('direct-message', async (e) => {
+        const data = JSON.parse(e.data);
+        
+        // Reload conversations to update list
+        await loadConversations();
+        
+        // If viewing the conversation with the sender, reload messages
+        if (activeConversation === data.senderId) {
+          await loadMessages(data.senderId);
+          // Mark as read
+          await api.request('/api/direct-messages', {
+            method: 'PATCH',
+            body: { conversationWith: data.senderId, markAsRead: true }
+          });
+        } else {
+          // Show toast notification
+          showToast('New message from ' + (data.senderName || 'someone'), 'info', 3000);
+        }
+      });
+      
+      eventSource.onerror = () => {
+        console.log('SSE connection lost, will reconnect...');
+      };
+    }
+
+    function escapeHtml(text) {
+      if (!text) return '';
+      const div = document.createElement('div');
+      div.textContent = text;
+      return div.innerHTML;
+    }
+
+    document.getElementById('message-form').addEventListener('submit', sendMessage);
+
+    init();
+  </script>
+
+  <style>
+    @media (max-width: 768px) {
+      .grid {
+        grid-template-columns: 1fr !important;
+      }
+      
+      .grid > .card:first-child {
+        max-height: 300px;
+      }
+    }
+  </style>
+</body>
+</html>

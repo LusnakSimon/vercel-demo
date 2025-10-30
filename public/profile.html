@@ -22,6 +22,7 @@
         <a href="/todos.html">Todos</a>
         <a href="/notes.html">Notes</a>
         <a href="/contacts.html">Contacts</a>
+        <a href="/messages.html">Messages</a>
         <button id="theme-toggle" title="Toggle theme" onclick="toggleTheme()">🌙</button>
         <span id="auth-actions"></span>
       </nav>
@@ -39,7 +40,10 @@
           <div id="user-role" style="margin-top: 12px;"></div>
           
           <div id="profile-actions" style="margin-top: 20px; display: flex; flex-direction: column; gap: 8px;">
-            <button id="add-friend-btn" class="btn btn-primary" style="display: none;">
+            <button id="send-message-btn" class="btn btn-primary" style="display: none;">
+              💬 Send Message
+            </button>
+            <button id="add-friend-btn" class="btn btn-secondary" style="display: none;">
               ➕ Add to Contacts
             </button>
             <button id="remove-friend-btn" class="btn btn-secondary" style="display: none;">
@@ -102,6 +106,7 @@
 
         // Show friend actions if not viewing own profile
         if (String(currentUser._id) !== String(userId)) {
+          document.getElementById('send-message-btn').style.display = 'block';
           await loadFriendStatus();
         }
 
@@ -276,6 +281,9 @@
     }
 
     // Event listeners
+    document.getElementById('send-message-btn').addEventListener('click', () => {
+      window.location.href = '/messages.html?with=' + encodeURIComponent(userId);
+    });
     document.getElementById('add-friend-btn').addEventListener('click', addToContacts);
     document.getElementById('remove-friend-btn').addEventListener('click', removeFromContacts);
 

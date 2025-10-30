@@ -82,10 +82,21 @@ function updateThemeIcon(theme) {
   }
 }
 
-// Initialize theme on page load
+// Initialize theme immediately and on DOM load
 initTheme();
-
 window.toggleTheme = toggleTheme;
+
+// Re-initialize theme icon when DOM is ready (in case button wasn't available initially)
+if (document.readyState === 'loading') {
+  document.addEventListener('DOMContentLoaded', () => {
+    const savedTheme = localStorage.getItem('theme') || 'dark';
+    updateThemeIcon(savedTheme);
+  });
+} else {
+  // DOM already loaded
+  const savedTheme = localStorage.getItem('theme') || 'dark';
+  updateThemeIcon(savedTheme);
+}
 
 // Toast helper (exposed globally)
 function showToast(message, type = 'info', timeout = 2500) {

@@ -23,6 +23,7 @@ const getImage = require('./uploads/images/[id]');
 const invitations = require('./invitations');
 const contacts = require('./contacts');
 const chat = require('./chat');
+const directMessages = require('./direct-messages');
 
 module.exports = async (req, res) => {
   // Add security and caching headers
@@ -79,6 +80,9 @@ module.exports = async (req, res) => {
     }
     if (pathname === '/api/chat') {
       return await chat(req, res);
+    }
+    if (pathname === '/api/direct-messages') {
+      return await directMessages(req, res);
     }
     if (pathname === '/api/health') {
       return await health(req, res);
