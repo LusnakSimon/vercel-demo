@@ -9,11 +9,8 @@
 <body>
   <div id="app"></div>
 
-  <script type="module">
-    import { auth } from './auth.js';
-    import { api } from './api.js';
-    import { renderAuthActions, showToast } from './app.js';
-
+  <script src="/app.js"></script>
+  <script>
     let currentUser = null;
     let contacts = [];
     let allProjects = [];
@@ -22,7 +19,8 @@
       renderAuthActions();
       
       try {
-        currentUser = await auth.getCurrentUser();
+        const res = await api.request('/api/auth/me');
+        currentUser = res.user;
         if (!currentUser) {
           window.location.href = '/login.html';
           return;
