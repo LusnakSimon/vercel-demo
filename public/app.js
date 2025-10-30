@@ -214,6 +214,7 @@ function openTodoModal(id) {
   const overlay = document.getElementById('modal-overlay');
   const titleInput = document.getElementById('modal-title-input');
   const descInput = document.getElementById('modal-description');
+  const tagsInput = document.getElementById('modal-tags-input');
   overlay.classList.remove('hidden');
   overlay.style.display = 'flex';
   
@@ -230,6 +231,10 @@ function openTodoModal(id) {
   api.request('/api/todos?id=' + encodeURIComponent(id)).then(t => {
     titleInput.value = t.title || '';
     descInput.value = t.description || '';
+    if (tagsInput) {
+      tagsInput.value = t.tags ? t.tags.join(', ') : '';
+      updateTagsPreview('modal-tags-preview', t.tags || []);
+    }
     document.getElementById('modal-form').dataset.id = id;
     titleInput.focus();
   }).catch(e=>{ showToast('Unable to load todo', 'error'); });
@@ -249,10 +254,12 @@ document.addEventListener('submit', async (ev) => {
     const id = ev.target.dataset.id;
     const title = document.getElementById('modal-title-input').value.trim();
     const description = document.getElementById('modal-description').value.trim();
+    const tagsInput = document.getElementById('modal-tags-input');
+    const tags = tagsInput ? tagsInput.value.split(',').map(t => t.trim()).filter(t => t) : [];
     if (!title) { showToast('Title required', 'error'); return; }
     try {
       document.getElementById('modal-save').disabled = true;
-      await api.request('/api/todos?id=' + encodeURIComponent(id), { method: 'PATCH', body: { title, description } });
+      await api.request('/api/todos?id=' + encodeURIComponent(id), { method: 'PATCH', body: { title, description, tags } });
       showToast('Todo updated', 'success', 1000);
       closeTodoModal();
       loadTodosList();
@@ -317,9 +324,36 @@ async function renderAuthActions() {
     if (res && res.user) {
       el.innerHTML = `<span class="muted">Hi, ${escapeHtml(res.user.name||res.user.email)}</span> <button class="btn btn-sm btn-secondary" onclick="signOut()">Sign Out</button>`;
     } else {
-      el.innerHTML = `<a class="btn btn-sm btn-primary" href="/login.html">Login</a>`;
+      el.innerHTML = '<a class="btn btn-sm btn-primary" href="/login.html">Sign In</a>';
     }
-  } catch (err) {
-    el.innerHTML = `<a class="btn btn-sm btn-primary" href="/login.html">Login</a>`;
+  } catch {
+    el.innerHTML = '<a class="btn btn-sm btn-primary" href="/login.html">Sign In</a>';
   }
 }
+
+// Tag management helpers
+function updateTagsPreview(previewId, tags) {
+  const preview = document.getElementById(previewId);
+  if (!preview) return;
+  preview.innerHTML = tags && tags.length ? 
+    tags.map(tag => `<span class="tag">${escapeHtml(tag)}</span>`).join('') : '';
+}
+
+// Add real-time tag preview
+document.addEventListener('DOMContentLoaded', () => {
+  const tagsInput = document.getElementById('tags-input');
+  if (tagsInput) {
+    tagsInput.addEventListener('input', (e) => {
+      const tags = e.target.value.split(',').map(t => t.trim()).filter(t => t);
+      updateTagsPreview('tags-preview', tags);
+    });
+  }
+  
+  const modalTagsInput = document.getElementById('modal-tags-input');
+  if (modalTagsInput) {
+    modalTagsInput.addEventListener('input', (e) => {
+      const tags = e.target.value.split(',').map(t => t.trim()).filter(t => t);
+      updateTagsPreview('modal-tags-preview', tags);
+    });
+  }
+});

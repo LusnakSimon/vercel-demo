@@ -56,6 +56,11 @@
             <label for="description">Description</label>
             <textarea id="description" placeholder="Add details..." rows="4"></textarea>
           </div>
+          <div>
+            <label for="tags-input">Tags (comma-separated)</label>
+            <input id="tags-input" type="text" placeholder="work, urgent, personal..." />
+            <div id="tags-preview" class="tags-container"></div>
+          </div>
           <button class="btn btn-primary" type="submit">Create Todo</button>
         </form>
       </div>
@@ -75,6 +80,11 @@
           <label for="modal-description">Description</label>
           <textarea id="modal-description" rows="4"></textarea>
         </div>
+        <div>
+          <label for="modal-tags-input">Tags (comma-separated)</label>
+          <input id="modal-tags-input" type="text" placeholder="work, urgent, personal..." />
+          <div id="modal-tags-preview" class="tags-container"></div>
+        </div>
         <div class="modal-actions">
           <button type="button" class="btn btn-secondary" id="modal-cancel">Cancel</button>
           <button type="submit" class="btn btn-primary" id="modal-save">Save Changes</button>
@@ -93,15 +103,19 @@
       e.preventDefault();
       const titleEl = document.getElementById('title');
       const descEl = document.getElementById('description');
+      const tagsEl = document.getElementById('tags-input');
       const title = titleEl.value.trim();
       const description = descEl.value.trim();
+      const tags = tagsEl.value.split(',').map(t => t.trim()).filter(t => t);
       if (!title) { showToast('Title required', 'error', 1800); return; }
       try{
         const btn = document.getElementById('create-form').querySelector('button[type=submit]');
         btn.disabled = true;
-        await api.request('/api/todos',{method:'POST', body:{title,description}});
+        await api.request('/api/todos',{method:'POST', body:{title, description, tags}});
         titleEl.value = '';
         descEl.value = '';
+        tagsEl.value = '';
+        updateTagsPreview('tags-preview', []);
         showToast('Todo created!', 'success', 1200);
         await loadTodos();
         btn.disabled = false;
@@ -122,12 +136,13 @@
         filtered = filtered.filter(t => t.done);
       }
       
-      // Apply search
+      // Apply search (including tags)
       if (searchQuery) {
         const q = searchQuery.toLowerCase();
         filtered = filtered.filter(t => 
           t.title.toLowerCase().includes(q) || 
-          (t.description && t.description.toLowerCase().includes(q))
+          (t.description && t.description.toLowerCase().includes(q)) ||
+          (t.tags && t.tags.some(tag => tag.toLowerCase().includes(q)))
         );
       }
       
@@ -176,7 +191,13 @@
           }
         });
         
-        li.innerHTML = `<div class="todo-content"><div class="todo-title">${escapeHtml(t.title)}</div>${desc}</div>`;
+        li.innerHTML = `
+          <div class="todo-content">
+            <div class="todo-title">${escapeHtml(t.title)}</div>
+            ${desc}
+            ${t.tags && t.tags.length ? `<div class="tags-container">${t.tags.map(tag => `<span class="tag">${escapeHtml(tag)}</span>`).join('')}</div>` : ''}
+          </div>
+        `;
         li.insertBefore(checkbox, li.firstChild);
         
         const actions = document.createElement('div');

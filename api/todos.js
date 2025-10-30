@@ -33,11 +33,30 @@ module.exports = async (req, res) => {
     if (req.method === 'POST') {
       const authUser = await require('../lib/auth').getUserFromRequest(req);
       if (!authUser) return res.status(401).json({ error: 'unauthenticated' });
-      const { title, description, projectId } = req.body || {};
+      const { title, description, projectId, tags } = req.body || {};
       const { requireString } = require('../lib/validate');
       if (!requireString(title, 1)) return res.status(400).json({ error: 'title required' });
       if (projectId && typeof projectId !== 'string') return res.status(400).json({ error: 'projectId must be a string' });
-      const doc = { title: title.trim(), description: description ? String(description).trim() : '', projectId: projectId || null, ownerId: String(authUser._id), done: false, createdAt: new Date() };
+      
+      // Validate and process tags
+      let tagArray = [];
+      if (tags) {
+        if (Array.isArray(tags)) {
+          tagArray = tags.filter(t => typeof t === 'string' && t.trim()).map(t => t.trim());
+        } else if (typeof tags === 'string') {
+          tagArray = tags.split(',').map(t => t.trim()).filter(t => t);
+        }
+      }
+      
+      const doc = { 
+        title: title.trim(), 
+        description: description ? String(description).trim() : '', 
+        projectId: projectId || null, 
+        ownerId: String(authUser._id), 
+        done: false, 
+        tags: tagArray,
+        createdAt: new Date() 
+      };
       const r = await todos.insertOne(doc);
       doc._id = r.insertedId;
       return res.status(201).json(doc);
@@ -57,6 +76,18 @@ module.exports = async (req, res) => {
       const { requireString } = require('../lib/validate');
       if (updates.title && !requireString(updates.title, 1)) return res.status(400).json({ error: 'invalid title' });
       if (updates.projectId && typeof updates.projectId !== 'string') return res.status(400).json({ error: 'projectId must be a string' });
+      
+      // Process tags if provided
+      if (updates.tags !== undefined) {
+        let tagArray = [];
+        if (Array.isArray(updates.tags)) {
+          tagArray = updates.tags.filter(t => typeof t === 'string' && t.trim()).map(t => t.trim());
+        } else if (typeof updates.tags === 'string') {
+          tagArray = updates.tags.split(',').map(t => t.trim()).filter(t => t);
+        }
+        updates.tags = tagArray;
+      }
+      
       updates.updatedAt = new Date();
       await todos.updateOne({ _id: new ObjectId(id) }, { $set: updates });
       const updated = await todos.findOne({ _id: new ObjectId(id) });
