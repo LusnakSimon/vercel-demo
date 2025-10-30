@@ -565,6 +565,24 @@ input::placeholder, textarea::placeholder {
   align-items: center;
 }
 
+.search-filter-wrapper {
+  display: flex;
+  gap: 16px;
+  align-items: center;
+  margin-bottom: 20px;
+  flex-wrap: wrap;
+}
+
+.search-filter-wrapper input {
+  flex: 1;
+  min-width: 200px;
+}
+
+.filter-buttons {
+  display: flex;
+  gap: 8px;
+}
+
 .pill {
   padding: 4px 12px;
   border-radius: 999px;
@@ -653,11 +671,12 @@ h3 {
 /* Responsive */
 @media (max-width: 768px) {
   .container {
-    padding: 24px 16px;
+    padding: 16px 12px;
   }
   
   .grid {
     grid-template-columns: 1fr;
+    gap: 16px;
   }
   
   .note-editor {
@@ -666,17 +685,205 @@ h3 {
   
   .site-header {
     flex-direction: column;
-    gap: 16px;
+    gap: 12px;
     align-items: flex-start;
+    margin-bottom: 24px;
+    padding-bottom: 16px;
+  }
+  
+  .brand h1 {
+    font-size: 20px;
+  }
+  
+  .logo {
+    width: 40px;
+    height: 40px;
+    font-size: 20px;
   }
   
   .nav {
     width: 100%;
     justify-content: flex-start;
+    flex-wrap: wrap;
+  }
+  
+  .nav a, .nav button {
+    padding: 12px 16px;
+    font-size: 15px;
+    min-height: 44px; /* Touch-friendly */
+  }
+  
+  .hero {
+    padding: 32px 24px;
+  }
+  
+  .hero h2 {
+    font-size: 24px;
+  }
+  
+  .hero p {
+    font-size: 15px;
   }
   
   .modal {
-    margin: 20px;
+    margin: 16px;
+    padding: 24px 20px;
+    max-width: calc(100% - 32px);
+  }
+  
+  .modal h3 {
+    font-size: 18px;
+  }
+  
+  .card {
+    padding: 20px;
+  }
+  
+  /* Touch-friendly buttons */
+  .btn {
+    padding: 14px 20px;
+    font-size: 15px;
+    min-height: 44px;
+  }
+  
+  .btn-sm {
+    padding: 10px 14px;
+    font-size: 14px;
+    min-height: 40px;
+  }
+  
+  /* Better mobile inputs */
+  input, textarea, select {
+    padding: 14px 16px;
+    font-size: 16px; /* Prevents zoom on iOS */
+    min-height: 44px;
+  }
+  
+  textarea {
+    min-height: 120px;
+  }
+  
+  /* Todo items mobile */
+  .todo-item {
+    padding: 14px 12px;
+    flex-wrap: wrap;
+  }
+  
+  .todo-checkbox {
+    width: 24px;
+    height: 24px;
+  }
+  
+  .todo-actions {
+    width: 100%;
+    margin-top: 12px;
+    padding-top: 12px;
+    border-top: 1px solid var(--border);
+    justify-content: flex-end;
+  }
+  
+  .todo-actions .btn {
+    flex: 1;
+    justify-content: center;
+  }
+  
+  /* Modal actions mobile */
+  .modal-actions {
+    flex-direction: column-reverse;
+    gap: 8px;
+  }
+  
+  .modal-actions .btn {
+    width: 100%;
+    justify-content: center;
+  }
+  
+  /* Note editor mobile */
+  .note-editor textarea {
+    min-height: 300px;
+    font-size: 15px;
+  }
+  
+  .note-preview {
+    min-height: 300px;
+  }
+  
+  .editor-toolbar {
+    flex-wrap: wrap;
+    gap: 6px;
+  }
+  
+  /* Search controls mobile */
+  .search-filter-wrapper {
+    flex-direction: column;
+    gap: 12px;
+  }
+  
+  .search-filter-wrapper input {
+    width: 100%;
+  }
+  
+  .filter-buttons {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 8px;
+    width: 100%;
+  }
+  
+  .filter-buttons .btn {
+    width: 100%;
+    justify-content: center;
+  }
+  
+  /* Toast mobile */
+  .toast {
+    left: 12px;
+    right: 12px;
+    bottom: 12px;
+    width: auto;
+  }
+  
+  /* Profile page mobile */
+  .profile-section {
+    padding: 16px;
+  }
+  
+  .profile-actions {
+    flex-direction: column;
+    gap: 8px;
+  }
+  
+  .profile-actions .btn {
+    width: 100%;
+    justify-content: center;
+  }
+}
+
+/* Extra small devices */
+@media (max-width: 480px) {
+  .container {
+    padding: 12px 8px;
+  }
+  
+  .card {
+    padding: 16px;
+    border-radius: var(--radius-md);
+  }
+  
+  .hero {
+    padding: 24px 16px;
+  }
+  
+  .hero h2 {
+    font-size: 22px;
+  }
+  
+  h2 {
+    font-size: 20px;
+  }
+  
+  h3 {
+    font-size: 16px;
   }
 }
 

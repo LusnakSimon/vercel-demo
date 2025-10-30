@@ -27,22 +27,19 @@
 
     <div class="grid">
       <div class="card">
-        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
-          <h2 style="margin: 0;">Your Todos</h2>
-          <div style="display: flex; gap: 8px;">
-            <button id="filter-all" class="btn btn-sm btn-secondary">All</button>
-            <button id="filter-active" class="btn btn-sm btn-secondary">Active</button>
-            <button id="filter-done" class="btn btn-sm btn-secondary">Done</button>
-          </div>
-        </div>
+        <h2>Your Todos</h2>
         
-        <div style="margin-bottom: 16px;">
+        <div class="search-filter-wrapper">
           <input 
             type="text" 
             id="search-todos" 
             placeholder="🔍 Search todos..." 
-            style="width: 100%;"
           />
+          <div class="filter-buttons">
+            <button id="filter-all" class="btn btn-sm btn-secondary">All</button>
+            <button id="filter-active" class="btn btn-sm btn-secondary">Active</button>
+            <button id="filter-done" class="btn btn-sm btn-secondary">Done</button>
+          </div>
         </div>
         
         <ul id="todos-list" class="todo-list"></ul>
