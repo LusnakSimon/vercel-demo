@@ -20,13 +20,31 @@
         <a href="/">Home</a>
         <a href="/dashboard.html">Dashboard</a>
         <a href="/note.html">Notes</a>
+        <button id="theme-toggle" title="Toggle theme" onclick="toggleTheme()">🌙</button>
         <span id="auth-actions"></span>
       </nav>
     </header>
 
     <div class="grid">
       <div class="card">
-        <h2>Your Todos</h2>
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
+          <h2 style="margin: 0;">Your Todos</h2>
+          <div style="display: flex; gap: 8px;">
+            <button id="filter-all" class="btn btn-sm btn-secondary">All</button>
+            <button id="filter-active" class="btn btn-sm btn-secondary">Active</button>
+            <button id="filter-done" class="btn btn-sm btn-secondary">Done</button>
+          </div>
+        </div>
+        
+        <div style="margin-bottom: 16px;">
+          <input 
+            type="text" 
+            id="search-todos" 
+            placeholder="🔍 Search todos..." 
+            style="width: 100%;"
+          />
+        </div>
+        
         <ul id="todos-list" class="todo-list"></ul>
       </div>
 
@@ -70,6 +88,10 @@
 
   <script src="/app.js"></script>
   <script>
+    let allTodos = [];
+    let currentFilter = 'all';
+    let searchQuery = '';
+    
     async function createHandler(e){
       e.preventDefault();
       const titleEl = document.getElementById('title');
@@ -92,12 +114,134 @@
         document.getElementById('create-form').querySelector('button[type=submit]').disabled = false;
       }
     }
-    document.getElementById('create-form').addEventListener('submit', createHandler);
+    
+    function filterTodos() {
+      let filtered = allTodos;
+      
+      // Apply status filter
+      if (currentFilter === 'active') {
+        filtered = filtered.filter(t => !t.done);
+      } else if (currentFilter === 'done') {
+        filtered = filtered.filter(t => t.done);
+      }
+      
+      // Apply search
+      if (searchQuery) {
+        const q = searchQuery.toLowerCase();
+        filtered = filtered.filter(t => 
+          t.title.toLowerCase().includes(q) || 
+          (t.description && t.description.toLowerCase().includes(q))
+        );
+      }
+      
+      renderTodos(filtered);
+    }
+    
+    function renderTodos(todos) {
+      const list = document.getElementById('todos-list');
+      list.innerHTML = '';
+      
+      if (todos.length === 0) {
+        const msg = searchQuery ? 'No todos match your search' : 
+                    currentFilter === 'active' ? 'No active todos' :
+                    currentFilter === 'done' ? 'No completed todos' :
+                    'No todos yet';
+        list.innerHTML = `
+          <li class="muted center" style="padding: 40px;">
+            <div style="font-size: 48px; margin-bottom: 16px; opacity: 0.3;">📝</div>
+            <div style="font-size: 16px;">${msg}</div>
+          </li>
+        `;
+        return;
+      }
+      
+      // Use the global loadTodosList to render, but pass filtered todos
+      todos.forEach(t => {
+        const li = document.createElement('li');
+        li.className = 'todo-item' + (t.done ? ' done' : '');
+        const desc = t.description ? `<div class="todo-description">${escapeHtml(t.description)}</div>` : '';
+        
+        const checkbox = document.createElement('input');
+        checkbox.type = 'checkbox';
+        checkbox.checked = t.done;
+        checkbox.className = 'todo-checkbox';
+        checkbox.dataset.id = t._id;
+        checkbox.addEventListener('change', async (e) => {
+          try {
+            await api.request('/api/todos?id=' + encodeURIComponent(t._id), {
+              method: 'PATCH',
+              body: { done: e.target.checked }
+            });
+            await loadTodos();
+          } catch(err) {
+            showToast('Failed to update', 'error');
+            e.target.checked = !e.target.checked;
+          }
+        });
+        
+        li.innerHTML = `<div class="todo-content"><div class="todo-title">${escapeHtml(t.title)}</div>${desc}</div>`;
+        li.insertBefore(checkbox, li.firstChild);
+        
+        const actions = document.createElement('div');
+        actions.className = 'todo-actions';
+        const editBtn = document.createElement('button');
+        editBtn.className = 'btn btn-sm btn-secondary';
+        editBtn.textContent = 'Edit';
+        editBtn.dataset.id = t._id;
+        const delBtn = document.createElement('button');
+        delBtn.className = 'btn btn-sm btn-danger';
+        delBtn.textContent = 'Delete';
+        delBtn.dataset.id = t._id;
+        actions.appendChild(editBtn);
+        actions.appendChild(delBtn);
+        li.appendChild(actions);
+        list.appendChild(li);
+      });
+    }
+    
     async function loadTodos(){
       const list = document.getElementById('todos-list');
-      if (list) list.innerHTML = '<li class="muted">Loading...</li>';
-      await loadTodosList();
+      if (list) list.innerHTML = '<li class="muted center" style="padding: 40px;"><div class="spinner" style="margin: 0 auto 12px;"></div>Loading...</li>';
+      try {
+        allTodos = await api.request('/api/todos');
+        filterTodos();
+      } catch(err) {
+        list.innerHTML = '<li class="muted center" style="padding: 40px;">Please sign in to view your todos.</li>';
+      }
     }
+    
+    document.getElementById('create-form').addEventListener('submit', createHandler);
+    
+    // Search input
+    document.getElementById('search-todos').addEventListener('input', (e) => {
+      searchQuery = e.target.value.trim();
+      filterTodos();
+    });
+    
+    // Filter buttons
+    document.getElementById('filter-all').addEventListener('click', () => {
+      currentFilter = 'all';
+      document.querySelectorAll('[id^="filter-"]').forEach(btn => btn.classList.remove('btn-primary'));
+      document.getElementById('filter-all').classList.add('btn-primary');
+      filterTodos();
+    });
+    
+    document.getElementById('filter-active').addEventListener('click', () => {
+      currentFilter = 'active';
+      document.querySelectorAll('[id^="filter-"]').forEach(btn => btn.classList.remove('btn-primary'));
+      document.getElementById('filter-active').classList.add('btn-primary');
+      filterTodos();
+    });
+    
+    document.getElementById('filter-done').addEventListener('click', () => {
+      currentFilter = 'done';
+      document.querySelectorAll('[id^="filter-"]').forEach(btn => btn.classList.remove('btn-primary'));
+      document.getElementById('filter-done').classList.add('btn-primary');
+      filterTodos();
+    });
+    
+    // Set initial active filter button
+    document.getElementById('filter-all').classList.add('btn-primary');
   </script>
 </body>
 </html>

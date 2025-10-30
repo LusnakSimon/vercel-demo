@@ -21,6 +21,34 @@ const api = {
 // expose api globally so inline page scripts can call it
 window.api = api;
 
+// Theme management
+function initTheme() {
+  const savedTheme = localStorage.getItem('theme') || 'dark';
+  document.documentElement.setAttribute('data-theme', savedTheme);
+  updateThemeIcon(savedTheme);
+}
+
+function toggleTheme() {
+  const current = document.documentElement.getAttribute('data-theme') || 'dark';
+  const next = current === 'dark' ? 'light' : 'dark';
+  document.documentElement.setAttribute('data-theme', next);
+  localStorage.setItem('theme', next);
+  updateThemeIcon(next);
+}
+
+function updateThemeIcon(theme) {
+  const btn = document.getElementById('theme-toggle');
+  if (btn) {
+    btn.textContent = theme === 'dark' ? '☀️' : '🌙';
+    btn.title = theme === 'dark' ? 'Switch to light mode' : 'Switch to dark mode';
+  }
+}
+
+// Initialize theme on page load
+initTheme();
+
+window.toggleTheme = toggleTheme;
+
 // Toast helper (exposed globally)
 function showToast(message, type = 'info', timeout = 2500) {
   try {
@@ -101,14 +129,51 @@ async function registerFormHandler(ev) {
 async function loadTodosList() {
   const listEl = document.querySelector('#todos-list');
   if (!listEl) return;
+  
+  // Show loading state
+  listEl.innerHTML = '<li class="muted center" style="padding: 40px;"><div class="spinner" style="margin: 0 auto 12px;"></div>Loading todos...</li>';
+  
   try {
     const todos = await api.request('/api/todos');
     listEl.innerHTML = '';
+    
+    if (!todos || todos.length === 0) {
+      listEl.innerHTML = `
+        <li class="muted center" style="padding: 40px;">
+          <div style="font-size: 48px; margin-bottom: 16px; opacity: 0.3;">📝</div>
+          <div style="font-size: 16px; margin-bottom: 8px;">No todos yet</div>
+          <div style="font-size: 14px;">Create your first todo to get started!</div>
+        </li>
+      `;
+      return;
+    }
+    
     todos.forEach(t => {
       const li = document.createElement('li');
       li.className = 'todo-item' + (t.done ? ' done' : '');
       const desc = t.description ? `<div class="todo-description">${escapeHtml(t.description)}</div>` : '';
+      
+      // Add checkbox for marking complete
+      const checkbox = document.createElement('input');
+      checkbox.type = 'checkbox';
+      checkbox.checked = t.done;
+      checkbox.className = 'todo-checkbox';
+      checkbox.dataset.id = t._id;
+      checkbox.addEventListener('change', async (e) => {
+        try {
+          await api.request('/api/todos?id=' + encodeURIComponent(t._id), {
+            method: 'PATCH',
+            body: { done: e.target.checked }
+          });
+          loadTodosList();
+        } catch(err) {
+          showToast('Failed to update', 'error');
+          e.target.checked = !e.target.checked;
+        }
+      });
+      
       li.innerHTML = `<div class="todo-content"><div class="todo-title">${escapeHtml(t.title)}</div>${desc}</div>`;
+      li.insertBefore(checkbox, li.firstChild);
       const actions = document.createElement('div');
       actions.className = 'todo-actions';
       const editBtn = document.createElement('button');
@@ -151,6 +216,16 @@ function openTodoModal(id) {
   const descInput = document.getElementById('modal-description');
   overlay.classList.remove('hidden');
   overlay.style.display = 'flex';
+  
+  // Keyboard shortcuts for modal
+  const handleKeydown = (e) => {
+    if (e.key === 'Escape') {
+      closeTodoModal();
+      document.removeEventListener('keydown', handleKeydown);
+    }
+  };
+  document.addEventListener('keydown', handleKeydown);
+  
   // load current todo
   api.request('/api/todos?id=' + encodeURIComponent(id)).then(t => {
     titleInput.value = t.title || '';
@@ -215,6 +290,10 @@ document.addEventListener('DOMContentLoaded', ()=>{
   // Initialize modal cancel button
   const modalCancel = document.getElementById('modal-cancel');
   if (modalCancel) modalCancel.addEventListener('click', ()=>{ closeTodoModal(); });
+  
+  // Theme toggle button
+  const themeToggle = document.getElementById('theme-toggle');
+  if (themeToggle) themeToggle.addEventListener('click', toggleTheme);
   
   loadTodosList();
   renderAuthActions();
