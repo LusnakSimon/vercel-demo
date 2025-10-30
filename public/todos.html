@@ -57,6 +57,10 @@
             <textarea id="description" placeholder="Add details..." rows="4"></textarea>
           </div>
           <div>
+            <label for="due-date">Due Date (optional)</label>
+            <input id="due-date" type="date" />
+          </div>
+          <div>
             <label for="tags-input">Tags (comma-separated)</label>
             <input id="tags-input" type="text" placeholder="work, urgent, personal..." />
             <div id="tags-preview" class="tags-container"></div>
@@ -79,6 +83,10 @@
         <div>
           <label for="modal-description">Description</label>
           <textarea id="modal-description" rows="4"></textarea>
+        </div>
+        <div>
+          <label for="modal-due-date">Due Date (optional)</label>
+          <input id="modal-due-date" type="date" />
         </div>
         <div>
           <label for="modal-tags-input">Tags (comma-separated)</label>
@@ -104,17 +112,20 @@
       const titleEl = document.getElementById('title');
       const descEl = document.getElementById('description');
       const tagsEl = document.getElementById('tags-input');
+      const dueDateEl = document.getElementById('due-date');
       const title = titleEl.value.trim();
       const description = descEl.value.trim();
       const tags = tagsEl.value.split(',').map(t => t.trim()).filter(t => t);
+      const dueDate = dueDateEl.value || null;
       if (!title) { showToast('Title required', 'error', 1800); return; }
       try{
         const btn = document.getElementById('create-form').querySelector('button[type=submit]');
         btn.disabled = true;
-        await api.request('/api/todos',{method:'POST', body:{title, description, tags}});
+        await api.request('/api/todos',{method:'POST', body:{title, description, tags, dueDate}});
         titleEl.value = '';
         descEl.value = '';
         tagsEl.value = '';
+        dueDateEl.value = '';
         updateTagsPreview('tags-preview', []);
         showToast('Todo created!', 'success', 1200);
         await loadTodos();
@@ -173,6 +184,30 @@
         li.className = 'todo-item' + (t.done ? ' done' : '');
         const desc = t.description ? `<div class="todo-description">${escapeHtml(t.description)}</div>` : '';
         
+        // Format due date
+        let dueDateHtml = '';
+        if (t.dueDate) {
+          const due = new Date(t.dueDate);
+          const now = new Date();
+          const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+          const dueDay = new Date(due.getFullYear(), due.getMonth(), due.getDate());
+          const diffDays = Math.floor((dueDay - today) / (1000 * 60 * 60 * 24));
+          
+          let dueDateClass = 'meta';
+          let dueDatePrefix = '📅 ';
+          if (diffDays < 0) {
+            dueDateClass = 'meta danger';
+            dueDatePrefix = '⚠️ Overdue: ';
+          } else if (diffDays === 0) {
+            dueDateClass = 'meta' ;
+            dueDatePrefix = '🔔 Today: ';
+          } else if (diffDays === 1) {
+            dueDatePrefix = '📌 Tomorrow: ';
+          }
+          
+          dueDateHtml = `<div class="${dueDateClass}">${dueDatePrefix}${due.toLocaleDateString()}</div>`;
+        }
+        
         const checkbox = document.createElement('input');
         checkbox.type = 'checkbox';
         checkbox.checked = t.done;
@@ -195,6 +230,7 @@
           <div class="todo-content">
             <div class="todo-title">${escapeHtml(t.title)}</div>
             ${desc}
+            ${dueDateHtml}
             ${t.tags && t.tags.length ? `<div class="tags-container">${t.tags.map(tag => `<span class="tag">${escapeHtml(tag)}</span>`).join('')}</div>` : ''}
           </div>
         `;

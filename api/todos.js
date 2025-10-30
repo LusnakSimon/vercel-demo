@@ -33,7 +33,7 @@ module.exports = async (req, res) => {
     if (req.method === 'POST') {
       const authUser = await require('../lib/auth').getUserFromRequest(req);
       if (!authUser) return res.status(401).json({ error: 'unauthenticated' });
-      const { title, description, projectId, tags } = req.body || {};
+      const { title, description, projectId, tags, dueDate } = req.body || {};
       const { requireString } = require('../lib/validate');
       if (!requireString(title, 1)) return res.status(400).json({ error: 'title required' });
       if (projectId && typeof projectId !== 'string') return res.status(400).json({ error: 'projectId must be a string' });
@@ -48,6 +48,15 @@ module.exports = async (req, res) => {
         }
       }
       
+      // Validate due date
+      let dueDateObj = null;
+      if (dueDate) {
+        dueDateObj = new Date(dueDate);
+        if (isNaN(dueDateObj.getTime())) {
+          return res.status(400).json({ error: 'invalid dueDate' });
+        }
+      }
+      
       const doc = { 
         title: title.trim(), 
         description: description ? String(description).trim() : '', 
@@ -55,6 +64,7 @@ module.exports = async (req, res) => {
         ownerId: String(authUser._id), 
         done: false, 
         tags: tagArray,
+        dueDate: dueDateObj,
         createdAt: new Date() 
       };
       const r = await todos.insertOne(doc);
@@ -86,6 +96,19 @@ module.exports = async (req, res) => {
           tagArray = updates.tags.split(',').map(t => t.trim()).filter(t => t);
         }
         updates.tags = tagArray;
+      }
+      
+      // Process due date if provided
+      if (updates.dueDate !== undefined) {
+        if (updates.dueDate === null || updates.dueDate === '') {
+          updates.dueDate = null;
+        } else {
+          const dueDateObj = new Date(updates.dueDate);
+          if (isNaN(dueDateObj.getTime())) {
+            return res.status(400).json({ error: 'invalid dueDate' });
+          }
+          updates.dueDate = dueDateObj;
+        }
       }
       
       updates.updatedAt = new Date();

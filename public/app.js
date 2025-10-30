@@ -215,6 +215,7 @@ function openTodoModal(id) {
   const titleInput = document.getElementById('modal-title-input');
   const descInput = document.getElementById('modal-description');
   const tagsInput = document.getElementById('modal-tags-input');
+  const dueDateInput = document.getElementById('modal-due-date');
   overlay.classList.remove('hidden');
   overlay.style.display = 'flex';
   
@@ -234,6 +235,10 @@ function openTodoModal(id) {
     if (tagsInput) {
       tagsInput.value = t.tags ? t.tags.join(', ') : '';
       updateTagsPreview('modal-tags-preview', t.tags || []);
+    }
+    if (dueDateInput && t.dueDate) {
+      const due = new Date(t.dueDate);
+      dueDateInput.value = due.toISOString().split('T')[0];
     }
     document.getElementById('modal-form').dataset.id = id;
     titleInput.focus();
@@ -256,10 +261,12 @@ document.addEventListener('submit', async (ev) => {
     const description = document.getElementById('modal-description').value.trim();
     const tagsInput = document.getElementById('modal-tags-input');
     const tags = tagsInput ? tagsInput.value.split(',').map(t => t.trim()).filter(t => t) : [];
+    const dueDateInput = document.getElementById('modal-due-date');
+    const dueDate = dueDateInput ? dueDateInput.value || null : null;
     if (!title) { showToast('Title required', 'error'); return; }
     try {
       document.getElementById('modal-save').disabled = true;
-      await api.request('/api/todos?id=' + encodeURIComponent(id), { method: 'PATCH', body: { title, description, tags } });
+      await api.request('/api/todos?id=' + encodeURIComponent(id), { method: 'PATCH', body: { title, description, tags, dueDate } });
       showToast('Todo updated', 'success', 1000);
       closeTodoModal();
       loadTodosList();
