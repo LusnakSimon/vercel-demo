@@ -17,6 +17,9 @@ const notes = require('./notes');
 const projects = require('./projects');
 const users = require('./users');
 const health = require('./health');
+const realtimeUpdates = require('./realtime/updates');
+const uploadImages = require('./uploads/images');
+const getImage = require('./uploads/images/[id]');
 
 module.exports = async (req, res) => {
   // Add security and caching headers
@@ -67,6 +70,18 @@ module.exports = async (req, res) => {
     }
     if (pathname === '/api/health') {
       return await health(req, res);
+    }
+    if (pathname === '/api/realtime/updates') {
+      return await realtimeUpdates(req, res);
+    }
+    if (pathname === '/api/uploads/images') {
+      return await uploadImages(req, res);
+    }
+    if (pathname.startsWith('/api/uploads/images/')) {
+      // Extract ID from path
+      const id = pathname.split('/').pop();
+      req.query = { ...req.query, id };
+      return await getImage(req, res);
     }
     
     // Not found

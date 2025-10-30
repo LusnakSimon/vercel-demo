@@ -2,6 +2,16 @@ const { connect } = require('../lib/mongo');
 const { ObjectId } = require('mongodb');
 const { getUserFromRequest, requireAuth, requireRole } = require('../lib/auth');
 
+// Import broadcast function for real-time updates
+let broadcastUpdate;
+try {
+  const realtimeModule = require('./realtime/updates');
+  broadcastUpdate = realtimeModule.broadcastUpdate;
+} catch (e) {
+  // If realtime module not available, create a no-op function
+  broadcastUpdate = () => {};
+}
+
 // Notes API: supports simple CRUD and text search (title + body + tags)
 module.exports = async (req, res) => {
   try {
@@ -126,6 +136,26 @@ module.exports = async (req, res) => {
       updates.updatedAt = new Date();
       await notes.updateOne({ _id: new ObjectId(id) }, { $set: updates });
       const updated = await notes.findOne({ _id: new ObjectId(id) });
+      
+      // Broadcast update to collaborators
+      if (existing.projectId) {
+        // Get all project members
+        const project = await projects.findOne({ _id: new ObjectId(existing.projectId) });
+        if (project && project.members) {
+          project.members.forEach(memberId => {
+            if (String(memberId) !== String(user._id)) { // Don't send to the editor
+              broadcastUpdate(String(memberId), {
+                type: 'note-updated',
+                noteId: String(id),
+                title: updated.title,
+                projectId: existing.projectId,
+                updatedBy: String(user._id)
+              });
+            }
+          });
+        }
+      }
+      
       return res.status(200).json(updated);
     }
 

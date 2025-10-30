@@ -42,8 +42,11 @@
         <button id="tb-italic" class="btn btn-sm btn-secondary"><em>I</em></button>
         <button id="tb-h1" class="btn btn-sm btn-secondary">H1</button>
         <button id="tb-code" class="btn btn-sm btn-secondary">Code</button>
+        <button id="tb-image" class="btn btn-sm btn-secondary">📷 Image</button>
+        <input type="file" id="image-upload" accept="image/*" style="display:none" />
         <button id="toggle-preview" class="btn btn-sm btn-secondary">Toggle Preview</button>
         <span class="editor-status" id="editor-status">Ready</span>
+        <span class="realtime-status" id="realtime-status" title="Real-time connection status">●</span>
       </div>
       
       <div class="note-editor">
@@ -61,6 +64,8 @@
 
     // autosave draft to localStorage (debounced)
     let autosaveTimeout = null;
+    let realtimeEventSource = null;
+    
     function draftKey() { return 'draft_note_' + (noteId || projectId || 'anon'); }
     function saveDraftToLocal(){
       const key = draftKey();
@@ -68,6 +73,73 @@
       try { localStorage.setItem(key, JSON.stringify(payload)); } catch(e){}
       if (window.showToast) showToast('Draft saved', 'success', 900);
       const status = document.getElementById('editor-status'); if(status) status.textContent = 'Draft saved';
+    }
+
+    // Real-time updates connection
+    function setupRealtimeUpdates() {
+      const statusEl = document.getElementById('realtime-status');
+      
+      function updateStatus(state) {
+        statusEl.className = 'realtime-status ' + state;
+        if (state === 'connected') {
+          statusEl.title = 'Connected - receiving live updates';
+        } else if (state === 'connecting') {
+          statusEl.title = 'Connecting...';
+        } else {
+          statusEl.title = 'Disconnected - will retry';
+        }
+      }
+      
+      function connect() {
+        if (realtimeEventSource) {
+          realtimeEventSource.close();
+        }
+        
+        updateStatus('connecting');
+        
+        realtimeEventSource = new EventSource('/api/realtime/updates');
+        
+        realtimeEventSource.onopen = () => {
+          updateStatus('connected');
+        };
+        
+        realtimeEventSource.addEventListener('note-updated', (e) => {
+          try {
+            const data = JSON.parse(e.data);
+            // Only reload if it's the current note and we're not actively editing
+            if (noteId && data.noteId === noteId) {
+              const bodyEl = document.getElementById('note-body');
+              const titleEl = document.getElementById('note-title-input');
+              const isEditing = document.activeElement === bodyEl || document.activeElement === titleEl;
+              
+              if (!isEditing) {
+                showToast('Note updated by another user - reloading', 'info', 2000);
+                setTimeout(() => loadNote(), 500);
+              } else {
+                showToast('Note updated by another user (not reloading while you edit)', 'warning', 3000);
+              }
+            }
+          } catch (err) {
+            console.error('Error handling note-updated event:', err);
+          }
+        });
+        
+        realtimeEventSource.onerror = () => {
+          updateStatus('disconnected');
+          realtimeEventSource.close();
+          // Retry connection after 5 seconds
+          setTimeout(connect, 5000);
+        };
+      }
+      
+      connect();
+      
+      // Cleanup on page unload
+      window.addEventListener('beforeunload', () => {
+        if (realtimeEventSource) {
+          realtimeEventSource.close();
+        }
+      });
     }
 
     async function init(){
@@ -79,11 +151,69 @@
         const status = document.getElementById('editor-status'); if(status) status.textContent = 'Editing...';
         clearTimeout(autosaveTimeout); autosaveTimeout = setTimeout(saveDraftToLocal, 1200);
       });
+      
+      // Drag and drop for images
+      bodyEl.addEventListener('dragover', (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        bodyEl.style.borderColor = '#4f46e5';
+        bodyEl.style.backgroundColor = 'rgba(79, 70, 229, 0.05)';
+      });
+      
+      bodyEl.addEventListener('dragleave', (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        bodyEl.style.borderColor = '';
+        bodyEl.style.backgroundColor = '';
+      });
+      
+      bodyEl.addEventListener('drop', async (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        bodyEl.style.borderColor = '';
+        bodyEl.style.backgroundColor = '';
+        
+        const files = Array.from(e.dataTransfer.files).filter(f => f.type.startsWith('image/'));
+        if (files.length === 0) return;
+        
+        for (const file of files) {
+          try {
+            const result = await uploadImage(file);
+            if (result && result.url) {
+              insertImageMarkdown(result.url, result.filename || file.name);
+            }
+          } catch (err) {
+            // Error already handled in uploadImage
+          }
+        }
+      });
+      
       // toolbar actions
       document.getElementById('tb-bold').addEventListener('click', ()=> wrapSelection(bodyEl, '**'));
       document.getElementById('tb-italic').addEventListener('click', ()=> wrapSelection(bodyEl, '*'));
       document.getElementById('tb-h1').addEventListener('click', ()=> prependLine(bodyEl, '# '));
       document.getElementById('tb-code').addEventListener('click', ()=> wrapSelection(bodyEl, '```\n', '\n```'));
+      
+      // Image upload button
+      const imageBtn = document.getElementById('tb-image');
+      const imageInput = document.getElementById('image-upload');
+      imageBtn.addEventListener('click', () => imageInput.click());
+      imageInput.addEventListener('change', async (e) => {
+        const file = e.target.files[0];
+        if (!file) return;
+        
+        try {
+          const result = await uploadImage(file);
+          if (result && result.url) {
+            insertImageMarkdown(result.url, result.filename || file.name);
+          }
+        } catch (err) {
+          // Error already handled in uploadImage
+        }
+        // Reset input so same file can be uploaded again
+        e.target.value = '';
+      });
+      
       document.getElementById('toggle-preview').addEventListener('click', ()=>{ document.getElementById('note-preview').classList.toggle('hidden'); });
       document.getElementById('save-note').addEventListener('click', save);
       // restore draft if present
@@ -102,6 +232,9 @@
       }
       if (noteId) await loadNote();
       if (projectId) document.getElementById('cancel-link').href = '/project-notes.html?projectId=' + encodeURIComponent(projectId);
+      
+      // Setup real-time updates after loading note
+      setupRealtimeUpdates();
     }
 
     async function loadNote(){
@@ -185,6 +318,66 @@
         const errorMsg = e.userMessage || e.error || 'Failed to save note';
         showToast(errorMsg, 'error', 3000);
       }
+    }
+
+    // Image upload functionality
+    async function uploadImage(file) {
+      const maxSize = 5 * 1024 * 1024; // 5MB
+      if (file.size > maxSize) {
+        showToast('Image must be less than 5MB', 'error', 3000);
+        return null;
+      }
+
+      return new Promise((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onload = async (e) => {
+          try {
+            const statusEl = document.getElementById('editor-status');
+            statusEl.textContent = 'Uploading image...';
+            
+            const payload = {
+              image: e.target.result,
+              filename: file.name,
+              noteId: noteId || null
+            };
+            
+            const res = await api.request('/api/uploads/images', { 
+              method: 'POST', 
+              body: payload 
+            });
+            
+            statusEl.textContent = 'Ready';
+            showToast('Image uploaded successfully!', 'success', 1500);
+            resolve(res);
+          } catch (err) {
+            const statusEl = document.getElementById('editor-status');
+            statusEl.textContent = 'Ready';
+            const errorMsg = err.userMessage || err.error || 'Failed to upload image';
+            showToast(errorMsg, 'error', 3000);
+            reject(err);
+          }
+        };
+        reader.onerror = () => {
+          showToast('Failed to read image file', 'error', 3000);
+          reject(new Error('File read error'));
+        };
+        reader.readAsDataURL(file);
+      });
+    }
+
+    function insertImageMarkdown(imageUrl, filename) {
+      const textarea = document.getElementById('note-body');
+      const altText = filename.replace(/\.[^/.]+$/, ''); // Remove extension
+      const markdown = `![${altText}](${imageUrl})`;
+      
+      const start = textarea.selectionStart;
+      const end = textarea.selectionEnd;
+      const val = textarea.value;
+      
+      textarea.value = val.slice(0, start) + markdown + val.slice(end);
+      textarea.focus();
+      textarea.selectionStart = textarea.selectionEnd = start + markdown.length;
+      textarea.dispatchEvent(new Event('input'));
     }
 
   function wrapSelection(el, before, after){ if(typeof after==='undefined') after=before; const start=el.selectionStart, end=el.selectionEnd; const val=el.value; const selected=val.slice(start,end); el.value = val.slice(0,start)+before+selected+after+val.slice(end); el.focus(); el.selectionStart = start + before.length; el.selectionEnd = end + before.length; el.dispatchEvent(new Event('input')); }

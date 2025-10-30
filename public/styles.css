@@ -465,6 +465,30 @@ input::placeholder, textarea::placeholder {
   margin-left: auto;
 }
 
+.realtime-status {
+  font-size: 16px;
+  margin-left: 8px;
+  transition: color 0.3s ease;
+}
+
+.realtime-status.connected {
+  color: #10b981; /* green */
+}
+
+.realtime-status.connecting {
+  color: #f59e0b; /* amber */
+  animation: pulse 1.5s infinite;
+}
+
+.realtime-status.disconnected {
+  color: #ef4444; /* red */
+}
+
+@keyframes pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.5; }
+}
+
 .note-editor textarea {
   min-height: 400px;
   border-radius: var(--radius-md);
