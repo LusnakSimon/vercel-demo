@@ -27,8 +27,9 @@
     <div class="card">
       <div class="note-meta">
         <input id="note-title-input" class="note-title-input" placeholder="Note title..." />
-        <div style="display:flex;gap:8px">
+        <div style="display:flex;gap:8px;flex-wrap:wrap">
           <button id="save-note" class="btn btn-primary">Save Note</button>
+          <button id="export-note" class="btn btn-secondary" style="display:none">📥 Export .md</button>
           <button id="delete-note" class="btn btn-danger" style="display:none">Delete</button>
           <a id="cancel-link" href="/" class="btn btn-secondary">Cancel</a>
         </div>
@@ -110,22 +111,66 @@
         document.getElementById('note-body').value = n.bodyMarkdown || '';
         document.getElementById('note-body').dispatchEvent(new Event('input'));
         // show meta
-        const meta = document.getElementById('note-meta');
+        const meta = document.getElementById('note-meta-info');
         meta.textContent = 'Author: ' + (n.authorId || '-') + ' · Created: ' + (n.createdAt? new Date(n.createdAt).toLocaleString() : '-') + (n.updatedAt?(' · Updated: '+new Date(n.updatedAt).toLocaleString()):'');
+        
+        // show export button
+        const exportBtn = document.getElementById('export-note');
+        if(exportBtn) {
+          exportBtn.style.display = 'inline-block';
+          exportBtn.addEventListener('click', () => exportAsMarkdown(n.title, n.bodyMarkdown));
+        }
+        
         // show delete button (API will enforce permission)
-        const del = document.getElementById('delete-note'); if(del) { del.style.display='inline-block'; del.addEventListener('click', async ()=>{
-          if(!confirm('Delete this note?')) return; try{ await api.request('/api/notes?id='+encodeURIComponent(noteId), { method:'DELETE' }); showToast('Deleted','success'); location.href = '/project-notes.html?projectId=' + encodeURIComponent(projectId || ''); }catch(e){ showToast('Delete failed: '+(e.error||JSON.stringify(e)),'error',3000); }
-        }); }
-      }catch(e){ if(window.showToast) showToast('Unable to load note', 'error', 2200); }
+        const del = document.getElementById('delete-note'); 
+        if(del) { 
+          del.style.display='inline-block'; 
+          del.addEventListener('click', async ()=>{
+            const confirmed = await confirmDialog('Delete this note?', 'This action cannot be undone.');
+            if(!confirmed) return; 
+            try{ 
+              await api.request('/api/notes?id='+encodeURIComponent(noteId), { method:'DELETE' }); 
+              showToast('Deleted','success'); 
+              location.href = '/dashboard.html';
+            }catch(e){ 
+              showToast('Delete failed: '+(e.error||JSON.stringify(e)),'error',3000); 
+            }
+          }); 
+        }
+      }catch(e){ 
+        if(window.showToast) showToast('Unable to load note: ' + (e.error || 'Network error'), 'error', 3000); 
+      }
+    }
+    
+    function exportAsMarkdown(title, body) {
+      const filename = (title || 'note').replace(/[^a-z0-9]/gi, '_').toLowerCase() + '.md';
+      const content = `# ${title || 'Untitled Note'}\n\n${body || ''}`;
+      const blob = new Blob([content], { type: 'text/markdown' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = filename;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+      showToast('Note exported as ' + filename, 'success', 2000);
     }
 
     async function save(){
       const title = document.getElementById('note-title-input').value;
       const body = document.getElementById('note-body').value;
+      
+      if (!title || !title.trim()) {
+        showToast('Please enter a title for your note', 'error', 2000);
+        document.getElementById('note-title-input').focus();
+        return;
+      }
+      
       try{
         if (noteId) {
           await api.request('/api/notes?id=' + encodeURIComponent(noteId), { method: 'PATCH', body: { title, bodyMarkdown: body } });
-          if(window.showToast) showToast('Saved', 'success', 1200);
+          showToast('Note saved successfully!', 'success', 1500);
           try{ localStorage.removeItem(draftKey()); }catch(e){}
           history.back();
           return;
@@ -133,10 +178,13 @@
         const payload = { title, bodyMarkdown: body };
         if (projectId) payload.projectId = projectId;
         const res = await api.request('/api/notes', { method: 'POST', body: payload });
-        if(window.showToast) showToast('Created', 'success', 1200);
+        showToast('Note created successfully!', 'success', 1500);
         try{ localStorage.removeItem(draftKey()); }catch(e){}
-        location.href = '/project-notes.html?projectId=' + encodeURIComponent(res.projectId || projectId || '');
-      }catch(e){ if(window.showToast) showToast('Save failed: ' + (e.error||JSON.stringify(e)), 'error', 3000); }
+        location.href = '/dashboard.html';
+      }catch(e){ 
+        const errorMsg = e.userMessage || e.error || 'Failed to save note';
+        showToast(errorMsg, 'error', 3000);
+      }
     }
 
   function wrapSelection(el, before, after){ if(typeof after==='undefined') after=before; const start=el.selectionStart, end=el.selectionEnd; const val=el.value; const selected=val.slice(start,end); el.value = val.slice(0,start)+before+selected+after+val.slice(end); el.focus(); el.selectionStart = start + before.length; el.selectionEnd = end + before.length; el.dispatchEvent(new Event('input')); }

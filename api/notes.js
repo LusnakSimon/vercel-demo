@@ -17,7 +17,7 @@ module.exports = async (req, res) => {
     }
 
     if (req.method === 'GET') {
-      const { id, projectId, q, tag, skip = 0, limit = 50 } = req.query || {};
+      const { id, projectId, q, tag, page = 1, limit = 50 } = req.query || {};
       // GET single note
       if (id) {
         const doc = await notes.findOne({ _id: new ObjectId(id) });
@@ -61,9 +61,26 @@ module.exports = async (req, res) => {
       if (tag) filter.tags = String(tag);
       if (q) filter.$text = { $search: String(q) };
 
-      const cursor = notes.find(filter).sort({ updatedAt: -1, createdAt: -1 }).skip(Number(skip)).limit(Math.min(500, Number(limit)));
-      const list = await cursor.toArray();
-      return res.status(200).json(list);
+      const pageNum = Math.max(1, parseInt(page, 10));
+      const pageSize = Math.min(100, Math.max(1, parseInt(limit, 10))); // Max 100 per page
+      const skip = (pageNum - 1) * pageSize;
+
+      const [list, total] = await Promise.all([
+        notes.find(filter).sort({ updatedAt: -1, createdAt: -1 }).skip(skip).limit(pageSize).toArray(),
+        notes.countDocuments(filter)
+      ]);
+      
+      return res.status(200).json({
+        data: list,
+        pagination: {
+          page: pageNum,
+          limit: pageSize,
+          total: total,
+          totalPages: Math.ceil(total / pageSize),
+          hasNext: pageNum < Math.ceil(total / pageSize),
+          hasPrev: pageNum > 1
+        }
+      });
     }
 
     if (req.method === 'POST') {

@@ -9,13 +9,51 @@ const api = {
     
     console.log('[API]', opts.method || 'GET', path, 'credentials:', opts.credentials);
     
-    const res = await fetch(path, opts);
-    const json = await res.json().catch(()=>null);
-    
-    console.log('[API]', path, 'status:', res.status, 'ok:', res.ok);
-    
-    if (!res.ok) throw json || { error: 'http ' + res.status };
-    return json;
+    try {
+      const res = await fetch(path, opts);
+      const json = await res.json().catch(()=>null);
+      
+      console.log('[API]', path, 'status:', res.status, 'ok:', res.ok);
+      
+      if (!res.ok) {
+        // Enhanced error messages
+        const errorMsg = json?.error || json?.message || `Request failed (${res.status})`;
+        const errorDetail = {
+          error: errorMsg,
+          status: res.status,
+          statusText: res.statusText,
+          path: path
+        };
+        
+        // User-friendly error messages
+        if (res.status === 401) {
+          errorDetail.userMessage = 'You need to sign in to perform this action';
+        } else if (res.status === 403) {
+          errorDetail.userMessage = 'You don\'t have permission to do that';
+        } else if (res.status === 404) {
+          errorDetail.userMessage = 'The item you\'re looking for doesn\'t exist';
+        } else if (res.status === 400) {
+          errorDetail.userMessage = errorMsg;
+        } else if (res.status >= 500) {
+          errorDetail.userMessage = 'Server error - please try again later';
+        } else {
+          errorDetail.userMessage = errorMsg;
+        }
+        
+        throw errorDetail;
+      }
+      return json;
+    } catch (err) {
+      // Network errors
+      if (err.name === 'TypeError' || !err.status) {
+        throw {
+          error: 'Network error',
+          userMessage: 'Unable to connect to server. Check your internet connection.',
+          originalError: err
+        };
+      }
+      throw err;
+    }
   }
 };
 // expose api globally so inline page scripts can call it

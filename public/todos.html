@@ -127,12 +127,13 @@
         tagsEl.value = '';
         dueDateEl.value = '';
         updateTagsPreview('tags-preview', []);
-        showToast('Todo created!', 'success', 1200);
+        showToast('Todo created successfully!', 'success', 1500);
         await loadTodos();
         btn.disabled = false;
       }catch(err){
         console.warn('create todo failed', err);
-        showToast('Create failed: ' + (err && (err.error || JSON.stringify(err))), 'error', 3000);
+        const errorMsg = err.userMessage || err.error || 'Failed to create todo';
+        showToast(errorMsg, 'error', 3000);
         document.getElementById('create-form').querySelector('button[type=submit]').disabled = false;
       }
     }
@@ -257,10 +258,20 @@
       const list = document.getElementById('todos-list');
       if (list) list.innerHTML = '<li class="muted center" style="padding: 40px;"><div class="spinner" style="margin: 0 auto 12px;"></div>Loading...</li>';
       try {
-        allTodos = await api.request('/api/todos');
+        const response = await api.request('/api/todos');
+        // Handle both old array response and new paginated response
+        if (Array.isArray(response)) {
+          allTodos = response;
+        } else if (response.data) {
+          allTodos = response.data;
+          // TODO: Add pagination UI if needed when totalPages > 1
+        } else {
+          allTodos = [];
+        }
         filterTodos();
       } catch(err) {
-        list.innerHTML = '<li class="muted center" style="padding: 40px;">Please sign in to view your todos.</li>';
+        const errorMsg = err.userMessage || 'Unable to load todos';
+        list.innerHTML = `<li class="muted center" style="padding: 40px;">${escapeHtml(errorMsg)}</li>`;
       }
     }
     

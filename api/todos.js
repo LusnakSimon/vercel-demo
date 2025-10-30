@@ -12,7 +12,7 @@ module.exports = async (req, res) => {
       const authUser = await require('../lib/auth').getUserFromRequest(req);
       if (!authUser) return res.status(401).json({ error: 'unauthenticated' });
       
-      const { id, projectId } = req.query || {};
+      const { id, projectId, page = 1, limit = 50 } = req.query || {};
       if (id) {
         const doc = await todos.findOne({ _id: new ObjectId(id) });
         if (!doc) return res.status(404).json({ error: 'not found' });
@@ -23,11 +23,30 @@ module.exports = async (req, res) => {
         return res.status(200).json(doc);
       }
       
-      // List todos - filter by current user's ownership
+      // List todos - filter by current user's ownership with pagination
       const q = { ownerId: String(authUser._id) };
       if (projectId) q.projectId = projectId;
-      const list = await todos.find(q).sort({ createdAt: -1 }).toArray();
-      return res.status(200).json(list);
+      
+      const pageNum = Math.max(1, parseInt(page, 10));
+      const pageSize = Math.min(100, Math.max(1, parseInt(limit, 10))); // Max 100 per page
+      const skip = (pageNum - 1) * pageSize;
+      
+      const [list, total] = await Promise.all([
+        todos.find(q).sort({ createdAt: -1 }).skip(skip).limit(pageSize).toArray(),
+        todos.countDocuments(q)
+      ]);
+      
+      return res.status(200).json({
+        data: list,
+        pagination: {
+          page: pageNum,
+          limit: pageSize,
+          total: total,
+          totalPages: Math.ceil(total / pageSize),
+          hasNext: pageNum < Math.ceil(total / pageSize),
+          hasPrev: pageNum > 1
+        }
+      });
     }
 
     if (req.method === 'POST') {
