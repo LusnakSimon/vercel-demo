@@ -17,10 +17,12 @@
         </div>
       </div>
       <nav class="nav">
-        <a href="/">Home</a>
         <a href="/dashboard.html">Dashboard</a>
         <a href="/projects.html">Projects</a>
+        <a href="/todos.html">Todos</a>
         <a href="/notes.html">Notes</a>
+        <a href="/contacts.html">Contacts</a>
+        <button id="theme-toggle" title="Toggle theme" onclick="toggleTheme()">🌙</button>
         <span id="auth-actions"></span>
       </nav>
     </header>
@@ -83,7 +85,7 @@
             </div>
           </div>
 
-          <div style="display: flex; gap: 12px; margin-bottom: 24px;">
+          <div style="display: flex; gap: 12px; margin-bottom: 32px;">
             <input 
               type="email" 
               id="add-contact-input" 
