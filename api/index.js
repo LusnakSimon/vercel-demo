@@ -20,6 +20,7 @@ const health = require('./health');
 const realtimeUpdates = require('./realtime/updates');
 const uploadImages = require('./uploads/images');
 const getImage = require('./uploads/images/[id]');
+const invitations = require('./invitations');
 
 module.exports = async (req, res) => {
   // Add security and caching headers
@@ -67,6 +68,9 @@ module.exports = async (req, res) => {
     }
     if (pathname === '/api/users') {
       return await users(req, res);
+    }
+    if (pathname === '/api/invitations') {
+      return await invitations(req, res);
     }
     if (pathname === '/api/health') {
       return await health(req, res);

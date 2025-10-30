@@ -155,16 +155,21 @@
       }
       
       try {
-        // In a real app, you'd fetch user details for each member ID
-        // For now, just show the member IDs
+        // Fetch all users to get their details
+        const allUsers = await api.request('/api/users');
+        const membersData = currentProject.members.map(memberId => {
+          const user = allUsers.find(u => String(u._id) === String(memberId));
+          return user || { _id: memberId, name: 'Unknown User', email: '' };
+        });
+        
         list.innerHTML = '<div style="display: flex; flex-wrap: wrap; gap: 12px;">';
-        currentProject.members.forEach(memberId => {
-          const isCurrentUser = currentUser && String(currentUser._id) === String(memberId);
+        membersData.forEach(member => {
+          const isCurrentUser = currentUser && String(currentUser._id) === String(member._id);
           const chip = document.createElement('div');
           chip.style.cssText = 'padding: 8px 16px; background: var(--surface); border: 1px solid var(--border); border-radius: 20px; display: flex; align-items: center; gap: 8px;';
           chip.innerHTML = `
             <span style="font-size: 18px;">👤</span>
-            <span>${memberId.substring(0, 8)}...</span>
+            <span style="font-weight: 500;">${escapeHtml(member.name || member.email)}</span>
             ${isCurrentUser ? '<span class="tag" style="margin-left: 4px;">You</span>' : ''}
           `;
           list.firstChild.appendChild(chip);
@@ -172,6 +177,7 @@
         list.innerHTML += '</div>';
       } catch (err) {
         console.error('Failed to load members:', err);
+        list.innerHTML = '<div class="muted" style="padding: 20px; text-align: center;">Error loading members</div>';
       }
     }
 
@@ -262,36 +268,31 @@
       if (!email) return;
       
       try {
-        // First, find user by email
-        const users = await api.request('/api/users');
-        const user = users.find(u => u.email === email);
+        const btn = e.target.querySelector('button[type=submit]');
+        btn.disabled = true;
+        btn.textContent = 'Sending...';
         
-        if (!user) {
-          showToast('User not found with that email', 'error', 3000);
-          return;
-        }
-        
-        if (currentProject.members && currentProject.members.includes(String(user._id))) {
-          showToast('User is already a member', 'warning', 3000);
-          return;
-        }
-        
-        // Add member to project
-        const members = currentProject.members || [];
-        members.push(String(user._id));
-        
-        await api.request('/api/projects?id=' + encodeURIComponent(projectId), {
-          method: 'PUT',
-          body: { members }
+        // Send invitation
+        await api.request('/api/invitations', {
+          method: 'POST',
+          body: {
+            projectId: projectId,
+            invitedUserEmail: email
+          }
         });
         
-        showToast('Member invited successfully!', 'success', 2000);
+        showToast('Invitation sent successfully!', 'success', 2000);
         closeModal('invite-modal');
         document.getElementById('member-email').value = '';
-        await loadProject();
-        await loadMembers();
+        
+        btn.disabled = false;
+        btn.textContent = 'Send Invite';
       } catch (err) {
-        showToast(err.userMessage || 'Failed to invite member', 'error', 3000);
+        const errorMsg = err.userMessage || err.error || 'Failed to send invitation';
+        showToast(errorMsg, 'error', 3000);
+        const btn = e.target.querySelector('button[type=submit]');
+        btn.disabled = false;
+        btn.textContent = 'Send Invite';
       }
     }
 

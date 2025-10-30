@@ -368,7 +368,20 @@ async function renderAuthActions() {
   try {
     const res = await api.request('/api/auth/me');
     if (res && res.user) {
-      el.innerHTML = `<span class="muted">Hi, ${escapeHtml(res.user.name||res.user.email)}</span> <button class="btn btn-sm btn-secondary" onclick="signOut()">Sign Out</button>`;
+      // Check for pending invitations
+      let notifBadge = '';
+      try {
+        const invitations = await api.request('/api/invitations');
+        if (invitations && invitations.length > 0) {
+          notifBadge = `<a href="/notifications.html" class="notification-bell" title="${invitations.length} pending invitation(s)">🔔<span class="badge">${invitations.length}</span></a>`;
+        } else {
+          notifBadge = '<a href="/notifications.html" class="notification-bell" title="Notifications" style="opacity: 0.5;">🔔</a>';
+        }
+      } catch (err) {
+        console.log('Could not load notifications:', err);
+      }
+      
+      el.innerHTML = `${notifBadge}<span class="muted">Hi, ${escapeHtml(res.user.name||res.user.email)}</span> <button class="btn btn-sm btn-secondary" onclick="signOut()">Sign Out</button>`;
     } else {
       el.innerHTML = '<a class="btn btn-sm btn-primary" href="/login.html">Sign In</a>';
     }

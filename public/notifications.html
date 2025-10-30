@@ -1,0 +1,148 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>Notifications - Research Notebook</title>
+  <link rel="stylesheet" href="/styles.css">
+</head>
+<body>
+  <div class="container">
+    <header class="site-header">
+      <div class="brand">
+        <div class="logo">RN</div>
+        <div>
+          <h1>Notifications</h1>
+          <p class="lead">Your invitations and updates</p>
+        </div>
+      </div>
+      <nav class="nav">
+        <a href="/">Home</a>
+        <a href="/dashboard.html">Dashboard</a>
+        <a href="/projects.html">Projects</a>
+        <button id="theme-toggle" title="Toggle theme" onclick="toggleTheme()">🌙</button>
+        <span id="auth-actions"></span>
+      </nav>
+    </header>
+
+    <div class="card">
+      <h2>Project Invitations</h2>
+      <div id="invitations-list"></div>
+    </div>
+  </div>
+
+  <script src="/app.js"></script>
+  <script>
+    async function loadInvitations() {
+      const list = document.getElementById('invitations-list');
+      list.innerHTML = '<div class="muted center" style="padding: 40px;"><div class="spinner" style="margin: 0 auto 12px;"></div>Loading...</div>';
+      
+      try {
+        const invitations = await api.request('/api/invitations');
+        
+        if (!invitations || invitations.length === 0) {
+          list.innerHTML = `
+            <div class="muted center" style="padding: 60px;">
+              <div style="font-size: 64px; margin-bottom: 16px; opacity: 0.3;">📬</div>
+              <div style="font-size: 18px;">No pending invitations</div>
+              <div style="font-size: 14px; margin-top: 8px; color: var(--text-secondary);">
+                You'll see project invitations here
+              </div>
+            </div>
+          `;
+          return;
+        }
+        
+        list.innerHTML = '';
+        invitations.forEach(invitation => {
+          const card = document.createElement('div');
+          card.style.cssText = 'padding: 20px; margin-bottom: 16px; border: 1px solid var(--border); border-radius: var(--radius-md); background: var(--surface);';
+          
+          const inviterName = invitation.inviter ? (invitation.inviter.name || invitation.inviter.email) : invitation.inviterName;
+          const projectName = invitation.project ? invitation.project.name : invitation.projectName;
+          
+          card.innerHTML = `
+            <div style="margin-bottom: 16px;">
+              <div style="font-size: 18px; font-weight: 600; margin-bottom: 8px;">
+                📁 ${escapeHtml(projectName)}
+              </div>
+              <div class="muted">
+                <strong>${escapeHtml(inviterName)}</strong> invited you to join this project
+              </div>
+              <div class="muted small" style="margin-top: 4px;">
+                ${new Date(invitation.createdAt).toLocaleString()}
+              </div>
+            </div>
+            <div style="display: flex; gap: 8px;">
+              <button 
+                class="btn btn-primary" 
+                onclick="respondToInvitation('${invitation._id}', 'accept')"
+                id="accept-${invitation._id}"
+              >
+                ✓ Accept
+              </button>
+              <button 
+                class="btn btn-secondary" 
+                onclick="respondToInvitation('${invitation._id}', 'decline')"
+                id="decline-${invitation._id}"
+              >
+                ✗ Decline
+              </button>
+            </div>
+          `;
+          
+          list.appendChild(card);
+        });
+      } catch (err) {
+        const errorMsg = err.userMessage || 'Failed to load invitations';
+        list.innerHTML = `<div class="muted center" style="padding: 40px;">${escapeHtml(errorMsg)}</div>`;
+      }
+    }
+    
+    async function respondToInvitation(invitationId, action) {
+      try {
+        const acceptBtn = document.getElementById('accept-' + invitationId);
+        const declineBtn = document.getElementById('decline-' + invitationId);
+        
+        if (acceptBtn) acceptBtn.disabled = true;
+        if (declineBtn) declineBtn.disabled = true;
+        
+        await api.request('/api/invitations', {
+          method: 'PATCH',
+          body: { id: invitationId, action: action }
+        });
+        
+        if (action === 'accept') {
+          showToast('Invitation accepted! You are now a project member.', 'success', 3000);
+        } else {
+          showToast('Invitation declined', 'success', 2000);
+        }
+        
+        // Reload invitations
+        setTimeout(() => loadInvitations(), 1000);
+      } catch (err) {
+        const errorMsg = err.userMessage || 'Failed to respond to invitation';
+        showToast(errorMsg, 'error', 3000);
+        
+        const acceptBtn = document.getElementById('accept-' + invitationId);
+        const declineBtn = document.getElementById('decline-' + invitationId);
+        if (acceptBtn) acceptBtn.disabled = false;
+        if (declineBtn) declineBtn.disabled = false;
+      }
+    }
+    
+    // Initialize
+    renderAuthActions();
+    loadInvitations();
+    
+    // Listen for real-time invitation updates
+    if (window.EventSource) {
+      const eventSource = new EventSource('/api/realtime/updates');
+      eventSource.addEventListener('invitation-received', () => {
+        showToast('New project invitation received!', 'info', 3000);
+        loadInvitations();
+      });
+    }
+  </script>
+</body>
+</html>
