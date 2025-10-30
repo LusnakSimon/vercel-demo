@@ -142,6 +142,12 @@
     const projectId = urlParams.get('id');
     let currentProject = null;
     let currentUser = null;
+    
+    function escapeHtml(text) {
+      const div = document.createElement('div');
+      div.textContent = text;
+      return div.innerHTML;
+    }
 
     if (!projectId) {
       window.location.href = '/projects.html';
@@ -186,7 +192,9 @@
           return user || { _id: memberId, name: 'Unknown User', email: '' };
         });
         
-        list.innerHTML = '<div style="display: flex; flex-wrap: wrap; gap: 12px;">';
+        const container = document.createElement('div');
+        container.style.cssText = 'display: flex; flex-wrap: wrap; gap: 12px;';
+        
         membersData.forEach(member => {
           const isCurrentUser = currentUser && String(currentUser._id) === String(member._id);
           const chip = document.createElement('div');
@@ -207,9 +215,11 @@
             <span style="font-weight: 500;">${escapeHtml(member.name || member.email)}</span>
             ${isCurrentUser ? '<span class="tag" style="margin-left: 4px;">You</span>' : ''}
           `;
-          list.firstChild.appendChild(chip);
+          container.appendChild(chip);
         });
-        list.innerHTML += '</div>';
+        
+        list.innerHTML = '';
+        list.appendChild(container);
       } catch (err) {
         console.error('Failed to load members:', err);
         list.innerHTML = '<div class="muted" style="padding: 20px; text-align: center;">Error loading members</div>';

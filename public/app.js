@@ -381,7 +381,7 @@ async function renderAuthActions() {
         console.log('Could not load notifications:', err);
       }
       
-      el.innerHTML = `<a href="/dashboard.html" class="btn btn-sm btn-secondary">Dashboard</a><a href="/notes.html" class="btn btn-sm btn-secondary">Notes</a><a href="/contacts.html" class="btn btn-sm btn-secondary">Contacts</a>${notifBadge}<span class="muted">Hi, ${escapeHtml(res.user.name||res.user.email)}</span> <button class="btn btn-sm btn-secondary" onclick="signOut()">Sign Out</button>`;
+      el.innerHTML = `${notifBadge}<span class="muted">Hi, ${escapeHtml(res.user.name||res.user.email)}</span> <button class="btn btn-sm btn-secondary" onclick="signOut()">Sign Out</button>`;
     } else {
       el.innerHTML = '<a class="btn btn-sm btn-primary" href="/login.html">Sign In</a>';
     }

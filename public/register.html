@@ -50,10 +50,6 @@
               </button>
             </div>
           </div>
-          <label style="display: flex; align-items: center; gap: 8px; font-size: 14px; cursor: pointer;">
-            <input type="checkbox" id="show-password-check" style="margin: 0;" />
-            <span>Show password</span>
-          </label>
           <button class="btn btn-primary" type="submit">Create Account</button>
         </form>
 
@@ -72,17 +68,12 @@
     // Toggle password visibility
     const passwordInput = document.getElementById('register-password');
     const toggleBtn = document.getElementById('toggle-password');
-    const showCheck = document.getElementById('show-password-check');
     
-    function togglePassword() {
+    toggleBtn.addEventListener('click', () => {
       const isPassword = passwordInput.type === 'password';
       passwordInput.type = isPassword ? 'text' : 'password';
       toggleBtn.textContent = isPassword ? '👁️‍🗨️' : '👁️';
       toggleBtn.title = isPassword ? 'Hide password' : 'Show password';
-      showCheck.checked = isPassword;
-    }
-    
-    toggleBtn.addEventListener('click', togglePassword);
-    showCheck.addEventListener('change', togglePassword);
+    });
   </script></body>
 </html>
