@@ -3,7 +3,7 @@ const api = {
   // sessions-based client: send credentials so cookie is sent to same-origin
   async request(path, opts = {}) {
     opts.headers = opts.headers || {};
-    opts.credentials = opts.credentials || 'same-origin';
+    opts.credentials = 'include'; // Always include credentials for session cookies
     opts.headers['Content-Type'] = opts.headers['Content-Type'] || 'application/json';
     if (opts.body && typeof opts.body !== 'string') opts.body = JSON.stringify(opts.body);
     
@@ -176,7 +176,9 @@ async function loadTodosList() {
   listEl.innerHTML = '<li class="muted center" style="padding: 40px;"><div class="spinner" style="margin: 0 auto 12px;"></div>Loading todos...</li>';
   
   try {
+    console.log('[LoadTodos] Fetching todos...');
     const todos = await api.request('/api/todos');
+    console.log('[LoadTodos] Received todos:', todos);
     listEl.innerHTML = '';
     
     if (!todos || todos.length === 0) {
@@ -232,7 +234,8 @@ async function loadTodosList() {
       listEl.appendChild(li);
     });
   } catch (err) {
-    listEl.innerHTML = '<li class="muted">Unable to load todos. Are you logged in?</li>';
+    console.error('[LoadTodos] Error:', err);
+    listEl.innerHTML = '<li class="muted">Unable to load todos. ' + (err.userMessage || err.message || 'Please try refreshing.') + '</li>';
   }
 }
 
