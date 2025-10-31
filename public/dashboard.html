@@ -129,10 +129,10 @@
           
           // Load stats and data
           console.log('Loading dashboard data...');
-          const [todos, notesResponse, projectsResponse] = await Promise.all([
+          const [todosResponse, notesResponse, projectsResponse] = await Promise.all([
             api.request('/api/todos').catch(err => {
               console.error('Failed to load todos:', err);
-              return [];
+              return { data: [] };
             }),
             api.request('/api/notes?limit=5').catch(err => {
               console.error('Failed to load notes:', err);
@@ -144,14 +144,10 @@
             })
           ]);
           
-          console.log('Loaded data:', { todos, notesResponse, projectsResponse });
+          console.log('Loaded data:', { todosResponse, notesResponse, projectsResponse });
           
-          // Ensure todos is an array
-          if (!Array.isArray(todos)) {
-            console.warn('Todos is not an array, using empty array');
-            todos = [];
-          }
-          
+          // Handle paginated response format
+          const todos = Array.isArray(todosResponse) ? todosResponse : (todosResponse.data || []);
           const notes = notesResponse.data || notesResponse || [];
           const projects = Array.isArray(projectsResponse) ? projectsResponse : (projectsResponse.data || []);
           

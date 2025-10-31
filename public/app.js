@@ -177,8 +177,13 @@ async function loadTodosList() {
   
   try {
     console.log('[LoadTodos] Fetching todos...');
-    const todos = await api.request('/api/todos');
-    console.log('[LoadTodos] Received todos:', todos);
+    const response = await api.request('/api/todos');
+    console.log('[LoadTodos] Received response:', response);
+    
+    // Handle paginated response (new API format) or direct array (old format)
+    const todos = Array.isArray(response) ? response : (response.data || []);
+    console.log('[LoadTodos] Parsed todos array:', todos);
+    
     listEl.innerHTML = '';
     
     if (!todos || todos.length === 0) {

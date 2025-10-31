@@ -105,8 +105,12 @@
     async function loadKanban() {
       try {
         console.log('Loading kanban todos...');
-        todos = await api.request('/api/todos');
-        console.log('Loaded todos:', todos);
+        const response = await api.request('/api/todos');
+        console.log('Loaded response:', response);
+        
+        // Handle paginated response format
+        todos = Array.isArray(response) ? response : (response.data || []);
+        console.log('Parsed todos:', todos);
         
         if (!Array.isArray(todos)) {
           console.error('Todos is not an array:', todos);
