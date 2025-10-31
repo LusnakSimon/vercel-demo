@@ -168,6 +168,16 @@ async function registerFormHandler(ev) {
   }
 }
 
+// Wrapper function to reload todos - respects filters on todos.html page
+async function reloadTodos() {
+  // If on todos.html page with filters, use the page's loadTodos function
+  if (typeof loadTodos === 'function' && window.location.pathname.includes('todos.html')) {
+    await loadTodos();
+  } else {
+    await loadTodosList();
+  }
+}
+
 async function loadTodosList() {
   const listEl = document.querySelector('#todos-list');
   if (!listEl) return;
@@ -214,7 +224,7 @@ async function loadTodosList() {
             method: 'PATCH',
             body: { done: e.target.checked }
           });
-          loadTodosList();
+          await reloadTodos();
         } catch(err) {
           showToast('Failed to update', 'error');
           e.target.checked = !e.target.checked;
@@ -264,7 +274,7 @@ document.addEventListener('click', async (ev) => {
     
     try {
       await api.request('/api/todos?id='+encodeURIComponent(id), { method: 'DELETE' });
-      loadTodosList();
+      await reloadTodos();
       
       // Show undo toast
       if (window.showToastWithAction && todoData) {
@@ -284,7 +294,7 @@ document.addEventListener('click', async (ev) => {
                 }
               });
               showToast('Todo restored', 'success');
-              loadTodosList();
+              await reloadTodos();
             } catch(e) {
               showToast('Failed to restore', 'error');
             }
@@ -360,7 +370,7 @@ document.addEventListener('submit', async (ev) => {
       await api.request('/api/todos?id=' + encodeURIComponent(id), { method: 'PATCH', body: { title, description, tags, dueDate } });
       showToast('Todo updated', 'success', 1000);
       closeTodoModal();
-      loadTodosList();
+      await reloadTodos();
     } catch (e) { showToast('Update failed: '+(e.error||JSON.stringify(e)), 'error', 3000); }
     finally { document.getElementById('modal-save').disabled = false; }
   }

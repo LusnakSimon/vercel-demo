@@ -241,7 +241,13 @@
               method: 'PATCH',
               body: { done: e.target.checked }
             });
-            await loadTodos();
+            // Update the todo in allTodos array
+            const todoInArray = allTodos.find(todo => todo._id === t._id);
+            if (todoInArray) {
+              todoInArray.done = e.target.checked;
+            }
+            // Re-filter to maintain current filter state
+            filterTodos();
           } catch(err) {
             showToast('Failed to update', 'error');
             e.target.checked = !e.target.checked;
