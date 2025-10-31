@@ -182,6 +182,12 @@ async function loadTodosList() {
   const listEl = document.querySelector('#todos-list');
   if (!listEl) return;
   
+  // If on todos.html page with its own loadTodos function, skip this
+  if (typeof loadTodos === 'function' && window.location.pathname.includes('todos.html')) {
+    console.log('[LoadTodosList] Skipping - todos.html has its own loader');
+    return;
+  }
+  
   // Show loading state
   listEl.innerHTML = '<li class="muted center" style="padding: 40px;"><div class="spinner" style="margin: 0 auto 12px;"></div>Loading todos...</li>';
   

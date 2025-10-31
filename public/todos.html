@@ -160,6 +160,9 @@
     }
     
     function filterTodos() {
+      console.log('[FilterTodos] Starting filter. allTodos:', allTodos);
+      console.log('[FilterTodos] currentFilter:', currentFilter, 'searchQuery:', searchQuery);
+      
       let filtered = allTodos;
       
       // Apply status filter
@@ -168,6 +171,8 @@
       } else if (currentFilter === 'done') {
         filtered = filtered.filter(t => t.done);
       }
+      
+      console.log('[FilterTodos] After status filter:', filtered.length);
       
       // Apply search (including tags)
       if (searchQuery) {
@@ -178,6 +183,8 @@
           (t.tags && t.tags.some(tag => tag.toLowerCase().includes(q)))
         );
       }
+      
+      console.log('[FilterTodos] After search filter:', filtered.length);
       
       renderTodos(filtered);
     }
@@ -285,7 +292,10 @@
       const list = document.getElementById('todos-list');
       if (list) list.innerHTML = '<li class="muted center" style="padding: 40px;"><div class="spinner" style="margin: 0 auto 12px;"></div>Loading...</li>';
       try {
+        console.log('[LoadTodos] Fetching todos from API...');
         const response = await api.request('/api/todos');
+        console.log('[LoadTodos] API response:', response);
+        
         // Handle both old array response and new paginated response
         if (Array.isArray(response)) {
           allTodos = response;
@@ -295,8 +305,11 @@
         } else {
           allTodos = [];
         }
+        
+        console.log('[LoadTodos] allTodos populated with', allTodos.length, 'items');
         filterTodos();
       } catch(err) {
+        console.error('[LoadTodos] Error:', err);
         const errorMsg = err.userMessage || 'Unable to load todos';
         list.innerHTML = `<li class="muted center" style="padding: 40px;">${escapeHtml(errorMsg)}</li>`;
       }
@@ -334,6 +347,9 @@
     
     // Set initial active filter button
     document.getElementById('filter-all').classList.add('btn-primary');
+    
+    // Load todos on page load
+    loadTodos();
   </script>
 </body>
 </html>
