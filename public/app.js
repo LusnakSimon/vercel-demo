@@ -61,8 +61,10 @@ window.api = api;
 
 // Theme management
 function toggleTheme() {
+  console.log('[Theme] Toggle clicked');
   const current = document.documentElement.getAttribute('data-theme') || 'dark';
   const next = current === 'dark' ? 'light' : 'dark';
+  console.log('[Theme] Switching from', current, 'to', next);
   document.documentElement.setAttribute('data-theme', next);
   localStorage.setItem('theme', next);
   updateThemeIcon(next);
@@ -402,6 +404,28 @@ async function loadProjectNotes(projectId, q) {
 
 function escapeHtml(s){ if(!s) return ''; return String(s).replace(/[&<>"']/g, c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":"&#39;"}[c])); }
 
+// Theme toggle button - set up immediately when script loads
+(function() {
+  function setupThemeToggle() {
+    const themeToggle = document.getElementById('theme-toggle');
+    if (themeToggle && !themeToggle.dataset.listenerAttached) {
+      themeToggle.addEventListener('click', toggleTheme);
+      themeToggle.dataset.listenerAttached = 'true';
+      console.log('[Theme] Event listener attached to toggle button');
+    }
+  }
+  
+  // Try immediately if DOM is ready
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', setupThemeToggle);
+  } else {
+    setupThemeToggle();
+  }
+  
+  // Also try after a short delay to catch late-loaded elements
+  setTimeout(setupThemeToggle, 100);
+})();
+
 document.addEventListener('DOMContentLoaded', ()=>{
   const loginForm = document.querySelector('#login-form');
   if (loginForm) loginForm.addEventListener('submit', loginFormHandler);
@@ -411,10 +435,6 @@ document.addEventListener('DOMContentLoaded', ()=>{
   // Initialize modal cancel button
   const modalCancel = document.getElementById('modal-cancel');
   if (modalCancel) modalCancel.addEventListener('click', ()=>{ closeTodoModal(); });
-  
-  // Theme toggle button
-  const themeToggle = document.getElementById('theme-toggle');
-  if (themeToggle) themeToggle.addEventListener('click', toggleTheme);
   
   loadTodosList();
   renderAuthActions();
