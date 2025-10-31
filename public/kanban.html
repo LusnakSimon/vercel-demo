@@ -1,0 +1,237 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>Kanban Board - Research Notebook</title>
+  <script>
+    // Apply theme immediately to prevent flash
+    (function() {
+      const theme = localStorage.getItem('theme') || 'dark';
+      document.documentElement.setAttribute('data-theme', theme);
+    })();
+  </script>
+  <link rel="stylesheet" href="/styles.css">
+  <script src="/enhancements.js" defer></script>
+</head>
+<body>
+  <div class="container">
+    <header class="site-header">
+      <div class="brand">
+        <div class="logo">RN</div>
+        <div>
+          <h1>📊 Kanban Board</h1>
+          <p class="lead">Visualize your workflow</p>
+        </div>
+      </div>
+      <nav class="nav">
+        <a href="/dashboard.html">Dashboard</a>
+        <a href="/projects.html">Projects</a>
+        <a href="/todos.html">Todos</a>
+        <a href="/notes.html">Notes</a>
+        <a href="/contacts.html">Contacts</a>
+        <a href="/messages.html">Messages</a>
+        <button id="theme-toggle" title="Toggle theme" onclick="toggleTheme()">🌙</button>
+        <span id="auth-actions"></span>
+      </nav>
+    </header>
+
+    <div class="breadcrumbs">
+      <a href="/dashboard.html">Dashboard</a>
+      <span class="breadcrumbs-separator">→</span>
+      <a href="/todos.html">Todos</a>
+      <span class="breadcrumbs-separator">→</span>
+      <span class="current">Kanban View</span>
+    </div>
+
+    <div class="kanban-board" id="kanban-board">
+      <div class="kanban-column" data-status="todo">
+        <div class="kanban-header">
+          <div class="kanban-title">
+            📝 To Do
+          </div>
+          <div class="kanban-count" id="count-todo">0</div>
+        </div>
+        <div class="kanban-cards" id="cards-todo"></div>
+      </div>
+
+      <div class="kanban-column" data-status="in-progress">
+        <div class="kanban-header">
+          <div class="kanban-title">
+            🚀 In Progress
+          </div>
+          <div class="kanban-count" id="count-in-progress">0</div>
+        </div>
+        <div class="kanban-cards" id="cards-in-progress"></div>
+      </div>
+
+      <div class="kanban-column" data-status="review">
+        <div class="kanban-header">
+          <div class="kanban-title">
+            👀 Review
+          </div>
+          <div class="kanban-count" id="count-review">0</div>
+        </div>
+        <div class="kanban-cards" id="cards-review"></div>
+      </div>
+
+      <div class="kanban-column" data-status="done">
+        <div class="kanban-header">
+          <div class="kanban-title">
+            ✅ Done
+          </div>
+          <div class="kanban-count" id="count-done">0</div>
+        </div>
+        <div class="kanban-cards" id="cards-done"></div>
+      </div>
+    </div>
+
+    <footer class="footer">
+      <p>Drag and drop cards to move them between columns</p>
+    </footer>
+  </div>
+
+  <script src="/app.js"></script>
+  <script>
+    let todos = [];
+    
+    async function loadKanban() {
+      try {
+        todos = await api.request('/api/todos');
+        renderKanban();
+      } catch (err) {
+        showToast('Failed to load todos', 'error');
+      }
+    }
+    
+    function renderKanban() {
+      // Group todos by status (using tags or done status)
+      const columns = {
+        'todo': [],
+        'in-progress': [],
+        'review': [],
+        'done': []
+      };
+      
+      todos.forEach(todo => {
+        if (todo.done) {
+          columns['done'].push(todo);
+        } else if (todo.tags && todo.tags.includes('in-progress')) {
+          columns['in-progress'].push(todo);
+        } else if (todo.tags && todo.tags.includes('review')) {
+          columns['review'].push(todo);
+        } else {
+          columns['todo'].push(todo);
+        }
+      });
+      
+      // Render each column
+      Object.keys(columns).forEach(status => {
+        const container = document.getElementById(`cards-${status}`);
+        const count = document.getElementById(`count-${status}`);
+        
+        count.textContent = columns[status].length;
+        
+        if (columns[status].length === 0) {
+          container.innerHTML = `
+            <div class="muted center" style="padding: 40px 16px;">
+              <div style="font-size: 32px; margin-bottom: 8px; opacity: 0.3;">📭</div>
+              <div style="font-size: 14px;">No items</div>
+            </div>
+          `;
+          return;
+        }
+        
+        container.innerHTML = columns[status].map(todo => `
+          <div class="kanban-card" draggable="true" data-id="${todo._id}" data-status="${status}">
+            <div style="font-weight: 600; margin-bottom: 8px;">${escapeHtml(todo.title)}</div>
+            ${todo.description ? `<div style="font-size: 13px; color: var(--text-secondary); margin-bottom: 8px;">${escapeHtml(todo.description).substring(0, 100)}${todo.description.length > 100 ? '...' : ''}</div>` : ''}
+            <div style="display: flex; gap: 8px; flex-wrap: wrap; margin-top: 12px;">
+              ${todo.tags ? todo.tags.filter(t => !['in-progress', 'review'].includes(t)).map(tag => `
+                <span class="badge badge-primary">${escapeHtml(tag)}</span>
+              `).join('') : ''}
+              ${todo.dueDate ? `
+                <span class="badge badge-warning">📅 ${new Date(todo.dueDate).toLocaleDateString()}</span>
+              ` : ''}
+            </div>
+          </div>
+        `).join('');
+      });
+      
+      initDragAndDrop();
+    }
+    
+    function initDragAndDrop() {
+      const cards = document.querySelectorAll('.kanban-card');
+      const columns = document.querySelectorAll('.kanban-cards');
+      
+      let draggedCard = null;
+      
+      cards.forEach(card => {
+        card.addEventListener('dragstart', (e) => {
+          draggedCard = card;
+          card.classList.add('dragging');
+          e.dataTransfer.effectAllowed = 'move';
+        });
+        
+        card.addEventListener('dragend', () => {
+          card.classList.remove('dragging');
+          draggedCard = null;
+        });
+      });
+      
+      columns.forEach(column => {
+        column.addEventListener('dragover', (e) => {
+          e.preventDefault();
+          e.dataTransfer.dropEffect = 'move';
+        });
+        
+        column.addEventListener('drop', async (e) => {
+          e.preventDefault();
+          if (!draggedCard) return;
+          
+          const newStatus = column.parentElement.dataset.status;
+          const todoId = draggedCard.dataset.id;
+          const oldStatus = draggedCard.dataset.status;
+          
+          if (newStatus === oldStatus) return;
+          
+          // Update todo
+          try {
+            const todo = todos.find(t => t._id === todoId);
+            if (!todo) return;
+            
+            // Update tags based on status
+            let tags = todo.tags || [];
+            tags = tags.filter(t => !['in-progress', 'review'].includes(t));
+            
+            if (newStatus === 'in-progress') {
+              tags.push('in-progress');
+            } else if (newStatus === 'review') {
+              tags.push('review');
+            }
+            
+            await api.request(`/api/todos?id=${encodeURIComponent(todoId)}`, {
+              method: 'PATCH',
+              body: {
+                done: newStatus === 'done',
+                tags: tags
+              }
+            });
+            
+            showToast(`Moved to ${newStatus.replace('-', ' ')}`, 'success', 1000);
+            loadKanban();
+          } catch (err) {
+            showToast('Failed to update todo', 'error');
+          }
+        });
+      });
+    }
+    
+    document.addEventListener('DOMContentLoaded', () => {
+      renderAuthActions();
+      loadKanban();
+    });
+  </script>
+</body>
+</html>
