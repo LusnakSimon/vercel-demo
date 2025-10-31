@@ -12,6 +12,7 @@
     })();
   </script>
   <link rel="stylesheet" href="/styles.css">
+  <script src="/enhancements.js" defer></script>
 </head>
 <body>
   <div class="container">
@@ -43,25 +44,59 @@
     </div>
 
     <div class="grid" id="dashboard-grid" style="display: none;">
+      <!-- Stats Cards -->
+      <div class="stats-grid" style="grid-column: 1 / -1;">
+        <div class="stat-card">
+          <div class="stat-value" id="stat-todos">0</div>
+          <div class="stat-label">Total Todos</div>
+          <div class="stat-change positive" id="stat-todos-change">+0 this week</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-value" id="stat-completed">0</div>
+          <div class="stat-label">Completed</div>
+          <div class="stat-change positive" id="stat-completed-change">0% done</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-value" id="stat-notes">0</div>
+          <div class="stat-label">Notes</div>
+          <div class="stat-change" id="stat-notes-change">+0 this week</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-value" id="stat-projects">0</div>
+          <div class="stat-label">Projects</div>
+          <div class="stat-change" id="stat-projects-change">Active</div>
+        </div>
+      </div>
+
       <div class="card">
-        <h2>Recent Todos</h2>
+        <h2>📊 Recent Activity</h2>
+        <div class="activity-feed" id="activity-feed">
+          <div class="muted center" style="padding: 40px;">
+            <div style="font-size: 48px; margin-bottom: 12px; opacity: 0.3;">⏰</div>
+            <div>No recent activity</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="card">
+        <h2>✅ Recent Todos</h2>
         <ul id="todos-list" class="todo-list"></ul>
         <a href="/todos.html" class="btn btn-secondary" style="margin-top: 16px; display: inline-block;">View All Todos</a>
       </div>
 
       <div class="card">
-        <h2>Recent Notes</h2>
+        <h2>📝 Recent Notes</h2>
         <ul id="notes-list" class="list"></ul>
         <a href="/notes.html" class="btn btn-secondary" style="margin-top: 16px; display: inline-block;">View All Notes</a>
       </div>
 
       <div class="card">
-        <h2>Quick Actions</h2>
+        <h2>🚀 Quick Actions</h2>
         <div class="stack" style="margin-top: 20px;">
-          <a href="/todos.html" class="btn btn-primary">Create Todo</a>
-          <a href="/note.html" class="btn btn-primary">New Note</a>
-          <a href="/projects.html" class="btn btn-secondary">Manage Projects</a>
-          <a href="/account.html" class="btn btn-secondary">View Profile</a>
+          <a href="/todos.html" class="btn btn-primary">✨ Create Todo</a>
+          <a href="/note.html" class="btn btn-primary">📄 New Note</a>
+          <a href="/projects.html" class="btn btn-secondary">📁 Manage Projects</a>
+          <a href="/account.html" class="btn btn-secondary">👤 View Profile</a>
         </div>
       </div>
     </div>
@@ -81,20 +116,47 @@
           document.getElementById('dashboard-content').style.display = 'none';
           document.getElementById('dashboard-grid').style.display = 'grid';
           
+          // Load stats and data
+          const [todos, notesResponse, projectsResponse] = await Promise.all([
+            api.request('/api/todos').catch(() => []),
+            api.request('/api/notes?limit=5').catch(() => ({ data: [] })),
+            api.request('/api/projects').catch(() => [])
+          ]);
+          
+          const notes = notesResponse.data || notesResponse || [];
+          const projects = Array.isArray(projectsResponse) ? projectsResponse : (projectsResponse.data || []);
+          
+          // Update stats
+          const completedCount = todos.filter(t => t.done).length;
+          const completionRate = todos.length > 0 ? Math.round((completedCount / todos.length) * 100) : 0;
+          
+          document.getElementById('stat-todos').textContent = todos.length;
+          document.getElementById('stat-completed').textContent = completedCount;
+          document.getElementById('stat-completed-change').textContent = `${completionRate}% done`;
+          document.getElementById('stat-notes').textContent = notes.length;
+          document.getElementById('stat-projects').textContent = projects.length;
+          
           // Load recent todos
-          const todos = await api.request('/api/todos');
           const list = document.getElementById('todos-list');
           if (todos && todos.length > 0) {
             list.innerHTML = '';
             todos.slice(0, 5).forEach(t => {
               const li = document.createElement('li');
               li.className = 'todo-item' + (t.done ? ' done' : '');
+              
+              const badge = t.tags && t.tags.length > 0 
+                ? `<span class="badge badge-primary" style="margin-left: 8px;">${t.tags[0]}</span>` 
+                : '';
+              
               li.innerHTML = `
                 <div class="todo-content">
-                  <div class="todo-title">${escapeHtml(t.title)}</div>
+                  <div class="todo-title">${escapeHtml(t.title)}${badge}</div>
                   ${t.description ? `<div class="todo-description">${escapeHtml(t.description)}</div>` : ''}
+                  ${t.dueDate ? `<div class="muted small">📅 Due: ${new Date(t.dueDate).toLocaleDateString()}</div>` : ''}
                 </div>
               `;
+              li.style.cursor = 'pointer';
+              li.onclick = () => window.location.href = '/todos.html';
               list.appendChild(li);
             });
           } else {
@@ -102,8 +164,6 @@
           }
           
           // Load recent notes
-          const notesResponse = await api.request('/api/notes?limit=5');
-          const notes = notesResponse.data || notesResponse;
           const notesList = document.getElementById('notes-list');
           if (notes && notes.length > 0) {
             notesList.innerHTML = '';
@@ -112,11 +172,16 @@
               li.className = 'list-item';
               li.style.cursor = 'pointer';
               li.onclick = () => window.location.href = '/note.html?id=' + encodeURIComponent(note._id);
+              
+              const tags = note.tags && note.tags.length > 0
+                ? `<span class="badge badge-info" style="margin-left: 8px;">${note.tags[0]}</span>`
+                : '';
+              
               li.innerHTML = `
                 <div>
-                  <div style="font-weight: 600;">${escapeHtml(note.title)}</div>
+                  <div style="font-weight: 600;">${escapeHtml(note.title)}${tags}</div>
                   <div class="muted small" style="margin-top: 4px;">
-                    ${new Date(note.updatedAt || note.createdAt).toLocaleDateString()}
+                    📅 ${new Date(note.updatedAt || note.createdAt).toLocaleDateString()}
                   </div>
                 </div>
               `;
@@ -125,11 +190,89 @@
           } else {
             notesList.innerHTML = '<li class="muted">No notes yet. <a href="/note.html" style="color: var(--accent);">Create one</a></li>';
           }
+          
+          // Generate activity feed
+          generateActivityFeed(todos, notes, projects);
         }
       } catch (err) {
         // Not authenticated, show welcome message
         console.log('Not authenticated');
       }
+    }
+    
+    function generateActivityFeed(todos, notes, projects) {
+      const feed = document.getElementById('activity-feed');
+      const activities = [];
+      
+      // Get recent items (last 7 days)
+      const weekAgo = new Date();
+      weekAgo.setDate(weekAgo.getDate() - 7);
+      
+      // Add recent todos
+      todos.forEach(todo => {
+        const createdDate = new Date(todo.createdAt);
+        if (createdDate > weekAgo) {
+          activities.push({
+            type: 'todo',
+            icon: todo.done ? '✅' : '📝',
+            title: `${todo.done ? 'Completed' : 'Created'} todo: ${todo.title}`,
+            time: createdDate,
+            meta: `${Math.floor((Date.now() - createdDate) / (1000 * 60 * 60))}h ago`
+          });
+        }
+      });
+      
+      // Add recent notes
+      notes.forEach(note => {
+        const createdDate = new Date(note.createdAt);
+        if (createdDate > weekAgo) {
+          activities.push({
+            type: 'note',
+            icon: '📄',
+            title: `Created note: ${note.title}`,
+            time: createdDate,
+            meta: `${Math.floor((Date.now() - createdDate) / (1000 * 60 * 60))}h ago`
+          });
+        }
+      });
+      
+      // Add recent projects
+      projects.forEach(project => {
+        const createdDate = new Date(project.createdAt);
+        if (createdDate > weekAgo) {
+          activities.push({
+            type: 'project',
+            icon: '📁',
+            title: `Created project: ${project.name}`,
+            time: createdDate,
+            meta: `${Math.floor((Date.now() - createdDate) / (1000 * 60 * 60))}h ago`
+          });
+        }
+      });
+      
+      // Sort by time
+      activities.sort((a, b) => b.time - a.time);
+      
+      if (activities.length === 0) {
+        feed.innerHTML = `
+          <div class="muted center" style="padding: 40px;">
+            <div style="font-size: 48px; margin-bottom: 12px; opacity: 0.3;">⏰</div>
+            <div>No recent activity</div>
+            <div style="font-size: 12px; margin-top: 8px;">Your activity will appear here</div>
+          </div>
+        `;
+        return;
+      }
+      
+      feed.innerHTML = activities.slice(0, 8).map(activity => `
+        <div class="activity-item">
+          <div class="activity-icon">${activity.icon}</div>
+          <div class="activity-content">
+            <div class="activity-title">${escapeHtml(activity.title)}</div>
+            <div class="activity-meta">${activity.meta}</div>
+          </div>
+        </div>
+      `).join('');
     }
     
     document.addEventListener('DOMContentLoaded', () => {

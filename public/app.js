@@ -246,9 +246,49 @@ document.addEventListener('click', async (ev) => {
     // open modal editor
     openTodoModal(id);
   } else if (btn.textContent === 'Delete') {
-    const confirmed = await confirmDialog('Delete todo?', 'This action cannot be undone.');
-    if (!confirmed) return;
-    try { await api.request('/api/todos?id='+encodeURIComponent(id), { method: 'DELETE' }); showToast('Deleted', 'success', 1000); loadTodosList(); } catch(e){ showToast('Delete failed', 'error'); }
+    // Get todo data for undo
+    let todoData = null;
+    try {
+      todoData = await api.request('/api/todos?id=' + encodeURIComponent(id));
+    } catch(e) {
+      console.error('Failed to get todo data', e);
+    }
+    
+    try {
+      await api.request('/api/todos?id='+encodeURIComponent(id), { method: 'DELETE' });
+      loadTodosList();
+      
+      // Show undo toast
+      if (window.showToastWithAction && todoData) {
+        showToastWithAction(
+          'Todo deleted',
+          'Undo',
+          async () => {
+            try {
+              await api.request('/api/todos', {
+                method: 'POST',
+                body: {
+                  title: todoData.title,
+                  description: todoData.description,
+                  tags: todoData.tags,
+                  dueDate: todoData.dueDate,
+                  done: todoData.done
+                }
+              });
+              showToast('Todo restored', 'success');
+              loadTodosList();
+            } catch(e) {
+              showToast('Failed to restore', 'error');
+            }
+          },
+          5000
+        );
+      } else {
+        showToast('Deleted', 'success', 1000);
+      }
+    } catch(e) {
+      showToast('Delete failed', 'error');
+    }
   }
 });
 
