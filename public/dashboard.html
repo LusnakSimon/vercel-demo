@@ -108,23 +108,54 @@
   
   <script src="/app.js"></script>
   <script>
+    function escapeHtml(text) {
+      if (!text) return '';
+      const div = document.createElement('div');
+      div.textContent = text;
+      return div.innerHTML;
+    }
+    
     async function loadDashboard() {
       try {
+        console.log('Checking authentication...');
         const res = await api.request('/api/auth/me');
+        console.log('Auth response:', res);
+        
         if (res && res.user) {
+          console.log('User authenticated:', res.user.email);
           // User is authenticated
           document.getElementById('dashboard-content').style.display = 'none';
           document.getElementById('dashboard-grid').style.display = 'grid';
           
           // Load stats and data
+          console.log('Loading dashboard data...');
           const [todos, notesResponse, projectsResponse] = await Promise.all([
-            api.request('/api/todos').catch(() => []),
-            api.request('/api/notes?limit=5').catch(() => ({ data: [] })),
-            api.request('/api/projects').catch(() => [])
+            api.request('/api/todos').catch(err => {
+              console.error('Failed to load todos:', err);
+              return [];
+            }),
+            api.request('/api/notes?limit=5').catch(err => {
+              console.error('Failed to load notes:', err);
+              return { data: [] };
+            }),
+            api.request('/api/projects').catch(err => {
+              console.error('Failed to load projects:', err);
+              return [];
+            })
           ]);
+          
+          console.log('Loaded data:', { todos, notesResponse, projectsResponse });
+          
+          // Ensure todos is an array
+          if (!Array.isArray(todos)) {
+            console.warn('Todos is not an array, using empty array');
+            todos = [];
+          }
           
           const notes = notesResponse.data || notesResponse || [];
           const projects = Array.isArray(projectsResponse) ? projectsResponse : (projectsResponse.data || []);
+          
+          console.log('Processed data:', { todosCount: todos.length, notesCount: notes.length, projectsCount: projects.length });
           
           // Update stats
           const completedCount = todos.filter(t => t.done).length;
