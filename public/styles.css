@@ -209,18 +209,25 @@ body {
 
 /* Theme toggle button */
 #theme-toggle {
-  background: transparent;
+  background: var(--surface);
   border: 1px solid var(--border);
   padding: 8px 12px;
   border-radius: var(--radius-sm);
   cursor: pointer;
   font-size: 18px;
   transition: all 0.2s ease;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
 }
 
 #theme-toggle:hover {
-  background: var(--surface);
+  background: var(--accent);
+  border-color: var(--accent);
   transform: scale(1.1);
+  box-shadow: 0 2px 8px rgba(59, 130, 246, 0.3);
+}
+
+#theme-toggle:active {
+  transform: scale(0.95);
 }
 
 /* Cards */
@@ -682,6 +689,21 @@ input::placeholder, textarea::placeholder {
 .filter-buttons {
   display: flex;
   gap: 8px;
+}
+
+.filter-buttons .btn-primary {
+  background: var(--accent);
+  color: var(--bg);
+  border-color: var(--accent);
+  font-weight: 600;
+  box-shadow: 0 2px 8px rgba(59, 130, 246, 0.3);
+}
+
+.filter-buttons .btn-primary:hover {
+  background: var(--accent-hover);
+  border-color: var(--accent-hover);
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(59, 130, 246, 0.4);
 }
 
 .pill {
@@ -1876,7 +1898,8 @@ a:focus-visible {
   textarea {
     border-width: 2px;
   }
-}  h3 {
+  
+  h3 {
     font-size: 16px;
   }
 }
