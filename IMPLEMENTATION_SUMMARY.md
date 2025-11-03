@@ -304,5 +304,5 @@ The application is now fully featured, performant, and deployable on Vercel's Ho
 
 - [Vercel Dashboard](https://vercel.com/dashboard)
 - [MongoDB Atlas](https://cloud.mongodb.com/)
-- [Production URL](https://dongfeng400.vercel.app)
+- [Production URL](https://researchnotebook.vercel.app)
 - [Local Dev](http://localhost:3001)

@@ -26,7 +26,7 @@ mongodb+srv://Vercel-Admin-dongfeng:atqNFcRNHjHQn9fO@dongfeng.ij0ylfc.mongodb.ne
 
 ## Other Useful Secrets (Already Configured)
 
-- `VERCEL_URL` - Base URL for smoke tests (e.g., https://dongfeng400.vercel.app)
+- `VERCEL_URL` - Base URL for smoke tests (e.g., https://researchnotebook.vercel.app)
 - Vercel deployment secrets are managed through Vercel's GitHub integration
 
 ## Security Note

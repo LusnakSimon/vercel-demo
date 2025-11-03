@@ -1,7 +1,7 @@
 // Simple integration test runner using global fetch (node 18+)
 // It tests the deployed API (or override with DEPLOY_URL env)
 const assert = require('assert');
-const url = process.env.DEPLOY_URL || 'https://dongfeng400.vercel.app';
+const url = process.env.DEPLOY_URL || 'https://researchnotebook.vercel.app';
 console.log('Running integration tests against', url);
 const seeded = { email: 'alice@example.com', password: 'password123' };
 (async ()=>{
