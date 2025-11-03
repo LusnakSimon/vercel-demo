@@ -34,6 +34,8 @@
         <input id="note-title-input" class="note-title-input" placeholder="Note title..." />
         <div style="display:flex;gap:8px;flex-wrap:wrap">
           <button id="save-note" class="btn btn-primary">Save Note</button>
+          <button id="use-template-btn" class="btn btn-secondary">📄 Use Template</button>
+          <button id="save-as-template-btn" class="btn btn-secondary" style="display:none">💾 Save as Template</button>
           <button id="export-note" class="btn btn-secondary" style="display:none">📥 Export .md</button>
           <button id="delete-note" class="btn btn-danger" style="display:none">Delete</button>
           <a id="cancel-link" href="/" class="btn btn-secondary">Cancel</a>
@@ -58,6 +60,44 @@
         <textarea id="note-body" placeholder="Write your markdown here..."></textarea>
         <div class="note-preview" id="note-preview"></div>
       </div>
+    </div>
+  </div>
+
+  <!-- Template Picker Modal -->
+  <div id="template-modal-overlay" class="modal-overlay hidden" style="display:none;">
+    <div class="modal" style="max-width: 800px; max-height: 80vh; overflow-y: auto;">
+      <h3>Choose a Template</h3>
+      <div id="templates-list" class="templates-grid" style="margin: 20px 0;">
+        <!-- Templates will be loaded here -->
+      </div>
+      <div class="modal-actions">
+        <button type="button" class="btn btn-secondary" id="template-modal-cancel">Cancel</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Save Template Modal -->
+  <div id="save-template-modal" class="modal-overlay hidden" style="display:none;">
+    <div class="modal">
+      <h3>Save as Template</h3>
+      <form id="save-template-form">
+        <div>
+          <label for="template-name">Template Name</label>
+          <input id="template-name" type="text" required placeholder="My Template" />
+        </div>
+        <div>
+          <label for="template-description">Description (optional)</label>
+          <input id="template-description" type="text" placeholder="Describe what this template is for..." />
+        </div>
+        <div>
+          <label for="template-icon">Icon (optional)</label>
+          <input id="template-icon" type="text" placeholder="📄" maxlength="2" />
+        </div>
+        <div class="modal-actions">
+          <button type="button" class="btn btn-secondary" id="save-template-cancel">Cancel</button>
+          <button type="submit" class="btn btn-primary">Save Template</button>
+        </div>
+      </form>
     </div>
   </div>
 
@@ -247,6 +287,19 @@
       
       document.getElementById('toggle-preview').addEventListener('click', ()=>{ document.getElementById('note-preview').classList.toggle('hidden'); });
       document.getElementById('save-note').addEventListener('click', save);
+      
+      // Template buttons
+      document.getElementById('use-template-btn').addEventListener('click', openTemplateModal);
+      document.getElementById('template-modal-cancel').addEventListener('click', closeTemplateModal);
+      
+      // Save as template (show button when editing existing note)
+      if (noteId) {
+        document.getElementById('save-as-template-btn').style.display = 'inline-block';
+      }
+      document.getElementById('save-as-template-btn').addEventListener('click', openSaveTemplateModal);
+      document.getElementById('save-template-cancel').addEventListener('click', closeSaveTemplateModal);
+      document.getElementById('save-template-form').addEventListener('submit', saveAsTemplate);
+      
       // restore draft if present
       const draftRaw = localStorage.getItem(draftKey());
       if (draftRaw) {
@@ -448,6 +501,152 @@
 
   function wrapSelection(el, before, after){ if(typeof after==='undefined') after=before; const start=el.selectionStart, end=el.selectionEnd; const val=el.value; const selected=val.slice(start,end); el.value = val.slice(0,start)+before+selected+after+val.slice(end); el.focus(); el.selectionStart = start + before.length; el.selectionEnd = end + before.length; el.dispatchEvent(new Event('input')); }
   function prependLine(el, prefix){ const start=el.selectionStart, val=el.value; const lineStart = val.lastIndexOf('\n', start-1)+1; el.value = val.slice(0,lineStart)+prefix+val.slice(lineStart); el.focus(); el.dispatchEvent(new Event('input')); }
+
+    // Template Functions
+    async function openTemplateModal() {
+      const overlay = document.getElementById('template-modal-overlay');
+      const listEl = document.getElementById('templates-list');
+      
+      overlay.classList.remove('hidden');
+      overlay.style.display = 'flex';
+      
+      listEl.innerHTML = '<div class="center" style="padding: 40px;"><div class="spinner"></div><p>Loading templates...</p></div>';
+      
+      try {
+        const templates = await api.request('/api/templates');
+        
+        if (!templates || templates.length === 0) {
+          listEl.innerHTML = '<div class="muted center" style="padding: 40px;">No templates available</div>';
+          return;
+        }
+        
+        listEl.innerHTML = templates.map(t => `
+          <div class="template-card" onclick="applyTemplate('${t._id}')" style="cursor: pointer; padding: 16px; border: 1px solid var(--border); border-radius: var(--radius-md); background: var(--surface); transition: all 0.2s;">
+            <div style="font-size: 32px; margin-bottom: 8px;">${t.icon || '📄'}</div>
+            <h4 style="margin-bottom: 4px;">${escapeHtml(t.name)}</h4>
+            <p class="muted small" style="margin-bottom: 8px;">${escapeHtml(t.description || '')}</p>
+            ${t.tags && t.tags.length ? `<div class="tags-container">${t.tags.map(tag => `<span class="tag">${escapeHtml(tag)}</span>`).join('')}</div>` : ''}
+          </div>
+        `).join('');
+        
+        // Add hover effect
+        document.querySelectorAll('.template-card').forEach(card => {
+          card.addEventListener('mouseenter', () => {
+            card.style.borderColor = 'var(--accent)';
+            card.style.transform = 'translateY(-2px)';
+          });
+          card.addEventListener('mouseleave', () => {
+            card.style.borderColor = 'var(--border)';
+            card.style.transform = 'translateY(0)';
+          });
+        });
+      } catch (err) {
+        console.error('Failed to load templates:', err);
+        listEl.innerHTML = '<div class="muted center" style="padding: 40px;">Failed to load templates</div>';
+      }
+    }
+    
+    function closeTemplateModal() {
+      const overlay = document.getElementById('template-modal-overlay');
+      overlay.classList.add('hidden');
+      overlay.style.display = 'none';
+    }
+    
+    async function applyTemplate(templateId) {
+      try {
+        const templates = await api.request('/api/templates');
+        const template = templates.find(t => t._id === templateId);
+        
+        if (!template) {
+          showToast('Template not found', 'error');
+          return;
+        }
+        
+        // Confirm if there's existing content
+        const titleInput = document.getElementById('note-title-input');
+        const bodyInput = document.getElementById('note-body');
+        const hasContent = titleInput.value.trim() || bodyInput.value.trim();
+        
+        if (hasContent) {
+          if (!confirm('This will replace your current content. Continue?')) {
+            return;
+          }
+        }
+        
+        // Apply template
+        titleInput.value = template.name;
+        bodyInput.value = template.content;
+        bodyInput.dispatchEvent(new Event('input'));
+        
+        closeTemplateModal();
+        showToast('Template applied!', 'success', 1500);
+      } catch (err) {
+        console.error('Failed to apply template:', err);
+        showToast('Failed to apply template', 'error');
+      }
+    }
+    
+    function openSaveTemplateModal() {
+      const titleInput = document.getElementById('note-title-input');
+      const bodyInput = document.getElementById('note-body');
+      
+      if (!titleInput.value.trim() || !bodyInput.value.trim()) {
+        showToast('Please add a title and content first', 'error', 2000);
+        return;
+      }
+      
+      const overlay = document.getElementById('save-template-modal');
+      overlay.classList.remove('hidden');
+      overlay.style.display = 'flex';
+      
+      // Pre-fill template name with note title
+      document.getElementById('template-name').value = titleInput.value;
+      document.getElementById('template-name').focus();
+    }
+    
+    function closeSaveTemplateModal() {
+      const overlay = document.getElementById('save-template-modal');
+      overlay.classList.add('hidden');
+      overlay.style.display = 'none';
+      document.getElementById('save-template-form').reset();
+    }
+    
+    async function saveAsTemplate(e) {
+      e.preventDefault();
+      
+      const name = document.getElementById('template-name').value.trim();
+      const description = document.getElementById('template-description').value.trim();
+      const icon = document.getElementById('template-icon').value.trim() || '📄';
+      const content = document.getElementById('note-body').value;
+      
+      if (!name || !content) {
+        showToast('Name and content are required', 'error');
+        return;
+      }
+      
+      try {
+        await api.request('/api/templates', {
+          method: 'POST',
+          body: {
+            name,
+            description,
+            icon,
+            content,
+            type: 'note',
+            tags: []
+          }
+        });
+        
+        closeSaveTemplateModal();
+        showToast('Template saved successfully!', 'success', 1500);
+      } catch (err) {
+        console.error('Failed to save template:', err);
+        showToast(err.userMessage || 'Failed to save template', 'error');
+      }
+    }
+    
+    // Make functions globally accessible
+    window.applyTemplate = applyTemplate;
 
     // load marked.js from CDN for markdown preview if not present
     (function(){

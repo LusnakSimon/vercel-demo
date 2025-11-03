@@ -27,6 +27,7 @@ const chat = require('./chat');
 const directMessages = require('./direct-messages');
 const demoData = require('./demo-data');
 const search = require('./search');
+const templates = require('./templates');
 
 module.exports = async (req, res) => {
   // Add security and caching headers
@@ -95,6 +96,9 @@ module.exports = async (req, res) => {
     }
     if (pathname === '/api/search') {
       return await search(req, res);
+    }
+    if (pathname === '/api/templates') {
+      return await templates(req, res);
     }
     if (pathname === '/api/health') {
       return await health(req, res);
