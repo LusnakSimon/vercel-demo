@@ -231,7 +231,19 @@
         } catch(e) { /* ignore */ }
       }
       if (noteId) await loadNote();
-      if (projectId) document.getElementById('cancel-link').href = '/project-notes.html?projectId=' + encodeURIComponent(projectId);
+      
+      // Set cancel link to go back to appropriate location
+      if (projectId) {
+        document.getElementById('cancel-link').href = '/project.html?id=' + encodeURIComponent(projectId);
+      } else if (document.referrer && document.referrer.includes(window.location.origin)) {
+        // Make cancel go back if there's a referrer from our site
+        document.getElementById('cancel-link').addEventListener('click', (e) => {
+          e.preventDefault();
+          history.back();
+        });
+      } else {
+        document.getElementById('cancel-link').href = '/notes.html';
+      }
       
       // Setup real-time updates after loading note
       setupRealtimeUpdates();
@@ -302,17 +314,40 @@
       
       try{
         if (noteId) {
+          // Updating existing note
           await api.request('/api/notes?id=' + encodeURIComponent(noteId), { method: 'PATCH', body: { title, bodyMarkdown: body } });
           showToast('Note saved successfully!', 'success', 1500);
           try{ localStorage.removeItem(draftKey()); }catch(e){}
-          history.back();
+          
+          // Navigate back to where user came from
+          if (projectId) {
+            // If editing from project, go back to project
+            setTimeout(() => window.location.href = '/project.html?id=' + encodeURIComponent(projectId), 500);
+          } else if (document.referrer && document.referrer.includes(window.location.origin)) {
+            // Go back to previous page if it's from our site
+            setTimeout(() => history.back(), 500);
+          } else {
+            // Default to notes list
+            setTimeout(() => window.location.href = '/notes.html', 500);
+          }
           return;
         }
+        
+        // Creating new note
         const payload = { title, bodyMarkdown: body };
         if (projectId) payload.projectId = projectId;
         const res = await api.request('/api/notes', { method: 'POST', body: payload });
         showToast('Note created successfully!', 'success', 1500);
         try{ localStorage.removeItem(draftKey()); }catch(e){}
+        
+        // Navigate to appropriate location after creation
+        if (projectId) {
+          // If created from project, go back to project
+          setTimeout(() => window.location.href = '/project.html?id=' + encodeURIComponent(projectId), 500);
+        } else {
+          // Otherwise go to notes list
+          setTimeout(() => window.location.href = '/notes.html', 500);
+        }
         location.href = '/dashboard.html';
       }catch(e){ 
         const errorMsg = e.userMessage || e.error || 'Failed to save note';
