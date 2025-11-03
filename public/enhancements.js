@@ -735,10 +735,24 @@
           
           <div style="display: grid; grid-template-columns: 1fr auto; gap: 16px; padding: 12px; background: var(--bg-secondary); border-radius: 8px;">
             <div>
+              <strong>Quick Actions</strong>
+              <div class="muted small">Context menu on first item</div>
+            </div>
+            <kbd>Ctrl+Shift+A</kbd>
+          </div>
+          
+          <div style="display: grid; grid-template-columns: 1fr auto; gap: 16px; padding: 12px; background: var(--bg-secondary); border-radius: 8px;">
+            <div>
               <strong>Show This Help</strong>
               <div class="muted small">Toggle shortcuts reference</div>
             </div>
             <kbd>?</kbd>
+          </div>
+        </div>
+        
+        <div style="margin-top: 16px; padding: 12px; background: var(--surface); border-radius: 8px;">
+          <div class="muted small" style="text-align: center;">
+            <strong>💡 Tip:</strong> Right-click on any todo or note for quick actions menu
           </div>
         </div>
         
@@ -804,6 +818,242 @@
   }
 
   // ============================================
+  // CONTEXT MENU (RIGHT-CLICK ACTIONS)
+  // ============================================
+  let contextMenu = null;
+  let contextMenuTarget = null;
+
+  function createContextMenu() {
+    const menu = document.createElement('div');
+    menu.id = 'context-menu';
+    menu.className = 'context-menu hidden';
+    menu.style.cssText = `
+      position: fixed;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-md);
+      box-shadow: var(--shadow-lg);
+      padding: 8px 0;
+      min-width: 180px;
+      z-index: 10000;
+    `;
+    document.body.appendChild(menu);
+    return menu;
+  }
+
+  function showContextMenu(x, y, actions) {
+    if (!contextMenu) {
+      contextMenu = createContextMenu();
+    }
+
+    contextMenu.innerHTML = actions.map(action => {
+      if (action.separator) {
+        return '<div class="context-menu-separator" style="height: 1px; background: var(--border); margin: 4px 8px;"></div>';
+      }
+      return `
+        <div class="context-menu-item" data-action="${action.id}" style="padding: 8px 16px; cursor: pointer; transition: background 0.2s; font-size: 14px; display: flex; align-items: center; gap: 8px;">
+          <span style="width: 20px;">${action.icon || ''}</span>
+          <span>${action.label}</span>
+        </div>
+      `;
+    }).join('');
+
+    // Position menu
+    contextMenu.style.left = x + 'px';
+    contextMenu.style.top = y + 'px';
+    contextMenu.classList.remove('hidden');
+
+    // Adjust if off-screen
+    const rect = contextMenu.getBoundingClientRect();
+    if (rect.right > window.innerWidth) {
+      contextMenu.style.left = (window.innerWidth - rect.width - 10) + 'px';
+    }
+    if (rect.bottom > window.innerHeight) {
+      contextMenu.style.top = (y - rect.height) + 'px';
+    }
+
+    // Add hover effects
+    contextMenu.querySelectorAll('.context-menu-item').forEach(item => {
+      item.addEventListener('mouseenter', () => {
+        item.style.background = 'var(--surface-hover)';
+      });
+      item.addEventListener('mouseleave', () => {
+        item.style.background = 'transparent';
+      });
+    });
+  }
+
+  function hideContextMenu() {
+    if (contextMenu) {
+      contextMenu.classList.add('hidden');
+    }
+    contextMenuTarget = null;
+  }
+
+  function initContextMenu() {
+    // Hide context menu on click outside or scroll
+    document.addEventListener('click', (e) => {
+      if (!contextMenu || !e.target.closest('.context-menu')) {
+        hideContextMenu();
+      }
+    });
+
+    document.addEventListener('scroll', hideContextMenu);
+    window.addEventListener('resize', hideContextMenu);
+
+    // Right-click on todo items
+    document.addEventListener('contextmenu', async (e) => {
+      const todoItem = e.target.closest('.todo-item');
+      const listItem = e.target.closest('.list-item');
+      
+      if (todoItem || listItem) {
+        e.preventDefault();
+        
+        const editBtn = (todoItem || listItem).querySelector('[data-id]');
+        const itemId = editBtn ? editBtn.dataset.id : null;
+        
+        if (!itemId) return;
+        
+        contextMenuTarget = { type: todoItem ? 'todo' : 'note', id: itemId, element: todoItem || listItem };
+        
+        const actions = todoItem ? [
+          { id: 'duplicate', label: 'Duplicate', icon: '📋' },
+          { id: 'edit', label: 'Edit', icon: '✏️' },
+          { separator: true },
+          { id: 'mark-done', label: 'Mark as Done', icon: '✓' },
+          { separator: true },
+          { id: 'delete', label: 'Delete', icon: '🗑️' }
+        ] : [
+          { id: 'duplicate', label: 'Duplicate', icon: '📋' },
+          { id: 'open', label: 'Open', icon: '📖' },
+          { separator: true },
+          { id: 'export', label: 'Export', icon: '📥' },
+          { separator: true },
+          { id: 'delete', label: 'Delete', icon: '🗑️' }
+        ];
+        
+        showContextMenu(e.pageX, e.pageY, actions);
+      }
+    });
+
+    // Handle context menu actions
+    document.addEventListener('click', async (e) => {
+      const menuItem = e.target.closest('.context-menu-item');
+      if (!menuItem || !contextMenuTarget) return;
+      
+      const action = menuItem.dataset.action;
+      const { type, id, element } = contextMenuTarget;
+      
+      hideContextMenu();
+      
+      try {
+        if (action === 'duplicate') {
+          if (type === 'todo') {
+            const todo = await window.api.request('/api/todos?id=' + encodeURIComponent(id));
+            await window.api.request('/api/todos', {
+              method: 'POST',
+              body: {
+                title: todo.title + ' (Copy)',
+                description: todo.description,
+                tags: todo.tags,
+                dueDate: todo.dueDate,
+                subtasks: todo.subtasks || []
+              }
+            });
+            if (window.showToast) showToast('Todo duplicated', 'success');
+            if (typeof reloadTodos === 'function') reloadTodos();
+          } else {
+            const note = await window.api.request('/api/notes?id=' + encodeURIComponent(id));
+            await window.api.request('/api/notes', {
+              method: 'POST',
+              body: {
+                title: note.title + ' (Copy)',
+                bodyMarkdown: note.bodyMarkdown,
+                tags: note.tags,
+                projectId: note.projectId
+              }
+            });
+            if (window.showToast) showToast('Note duplicated', 'success');
+            setTimeout(() => window.location.reload(), 500);
+          }
+        } else if (action === 'edit' && type === 'todo') {
+          if (typeof openTodoModal === 'function') {
+            openTodoModal(id);
+          }
+        } else if (action === 'open' && type === 'note') {
+          window.location.href = '/note.html?id=' + encodeURIComponent(id);
+        } else if (action === 'mark-done' && type === 'todo') {
+          await window.api.request('/api/todos?id=' + encodeURIComponent(id), {
+            method: 'PATCH',
+            body: { done: true }
+          });
+          if (window.showToast) showToast('Marked as done', 'success');
+          if (typeof reloadTodos === 'function') reloadTodos();
+        } else if (action === 'delete') {
+          const confirmed = confirm(`Delete this ${type}?`);
+          if (!confirmed) return;
+          
+          const endpoint = type === 'todo' ? '/api/todos' : '/api/notes';
+          await window.api.request(endpoint + '?id=' + encodeURIComponent(id), {
+            method: 'DELETE'
+          });
+          if (window.showToast) showToast('Deleted', 'success');
+          if (typeof reloadTodos === 'function') {
+            reloadTodos();
+          } else {
+            setTimeout(() => window.location.reload(), 500);
+          }
+        } else if (action === 'export' && type === 'note') {
+          const note = await window.api.request('/api/notes?id=' + encodeURIComponent(id));
+          const filename = (note.title || 'note').replace(/[^a-z0-9]/gi, '_').toLowerCase() + '.md';
+          const content = `# ${note.title || 'Untitled Note'}\n\n${note.bodyMarkdown || ''}`;
+          const blob = new Blob([content], { type: 'text/markdown' });
+          const url = URL.createObjectURL(blob);
+          const a = document.createElement('a');
+          a.href = url;
+          a.download = filename;
+          document.body.appendChild(a);
+          a.click();
+          document.body.removeChild(a);
+          URL.revokeObjectURL(url);
+          if (window.showToast) showToast('Note exported', 'success');
+        }
+      } catch (err) {
+        console.error('Context menu action failed:', err);
+        if (window.showToast) showToast('Action failed', 'error');
+      }
+    });
+  }
+
+  // ============================================
+  // QUICK ACTIONS KEYBOARD SHORTCUT (Ctrl+Shift+A)
+  // ============================================
+  function initQuickActions() {
+    document.addEventListener('keydown', (e) => {
+      // Ctrl+Shift+A or Cmd+Shift+A
+      if ((e.ctrlKey || e.metaKey) && e.shiftKey && e.key === 'A') {
+        e.preventDefault();
+        
+        // Simulate right-click on first todo/note item
+        const firstItem = document.querySelector('.todo-item, .list-item');
+        if (firstItem) {
+          const rect = firstItem.getBoundingClientRect();
+          const event = new MouseEvent('contextmenu', {
+            bubbles: true,
+            cancelable: true,
+            view: window,
+            pageX: rect.left + rect.width / 2,
+            pageY: rect.top + rect.height / 2
+          });
+          firstItem.dispatchEvent(event);
+        } else {
+          if (window.showToast) showToast('No items to perform actions on', 'info', 2000);
+        }
+      }
+    });
+  }
+
+  // ============================================
   // INITIALIZE EVERYTHING
   // ============================================
   function init() {
@@ -819,6 +1069,8 @@
     initFadeInAnimations();
     initMobileNav();
     initPullToRefresh();
+    initContextMenu();
+    initQuickActions();
 
     console.log('🚀 UI Enhancements loaded!');
   }
@@ -826,3 +1078,4 @@
   init();
 
 })();
+
