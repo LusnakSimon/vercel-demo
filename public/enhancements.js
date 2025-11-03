@@ -674,9 +674,12 @@
     modal.style.zIndex = '10000';
     
     modal.innerHTML = `
-      <div class="modal" style="max-width: 600px; max-height: 90vh; overflow-y: auto;">
-        <h2 style="margin: 0 0 24px 0;">⌨️ Keyboard Shortcuts</h2>
-        <div style="display: grid; gap: 12px;">
+      <div class="modal" style="max-width: 600px; max-height: 85vh; display: flex; flex-direction: column;">
+        <div style="padding: 24px; flex-shrink: 0;">
+          <h2 style="margin: 0;">⌨️ Keyboard Shortcuts</h2>
+        </div>
+        <div style="flex: 1; overflow-y: auto; padding: 0 24px;">
+          <div style="display: grid; gap: 12px;">
           <div style="display: grid; grid-template-columns: 1fr auto; gap: 16px; padding: 12px; background: var(--bg-secondary); border-radius: 8px;">
             <div>
               <strong>Open Command Palette</strong>
@@ -748,15 +751,16 @@
             </div>
             <kbd>?</kbd>
           </div>
-        </div>
         
-        <div style="margin-top: 16px; padding: 12px; background: var(--surface); border-radius: 8px;">
-          <div class="muted small" style="text-align: center;">
-            <strong>💡 Tip:</strong> Right-click on any todo or note for quick actions menu
+          <div style="margin-top: 16px; padding: 12px; background: var(--surface); border-radius: 8px;">
+            <div class="muted small" style="text-align: center;">
+              <strong>💡 Tip:</strong> Right-click on any todo or note for quick actions menu
+            </div>
+          </div>
           </div>
         </div>
         
-        <div style="margin-top: 24px; text-align: center;">
+        <div style="padding: 24px; flex-shrink: 0; text-align: center; border-top: 1px solid var(--border);">
           <button class="btn btn-primary" onclick="document.getElementById('shortcuts-modal').remove()">
             Got it!
           </button>
@@ -1077,7 +1081,7 @@
     if (helpBtn) {
       helpBtn.addEventListener('click', (e) => {
         e.preventDefault();
-        showKeyboardShortcuts();
+        showShortcutsHelp();
       });
     }
 
