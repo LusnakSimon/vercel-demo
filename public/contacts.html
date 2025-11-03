@@ -154,8 +154,8 @@
         </div>
 
         <!-- Invite to Project Modal -->
-        <div id="invite-modal" class="modal">
-          <div class="modal-content">
+        <div id="invite-modal" class="modal-overlay">
+          <div class="modal">
             <h2>Invite to Project</h2>
             <p id="invite-user-name" class="muted"></p>
             <select id="project-select" class="form-input" style="margin: 16px 0;">
@@ -190,14 +190,13 @@
       }
 
       try {
-        // Find user by email
-        const users = await api.request('/api/users?email=' + encodeURIComponent(email));
-        if (users.length === 0) {
+        // Find user by email (returns single user object, not array)
+        const user = await api.request('/api/users?email=' + encodeURIComponent(email));
+        
+        if (!user || !user._id) {
           showToast('User not found', 'error', 2000);
           return;
         }
-
-        const user = users[0];
         
         // Add as contact
         await api.request('/api/contacts', {
@@ -210,7 +209,8 @@
         await loadContacts();
         renderPage();
       } catch (err) {
-        showToast(err.userMessage || 'Failed to add contact', 'error', 3000);
+        console.error('Add contact error:', err);
+        showToast(err.userMessage || err.error || 'Failed to add contact', 'error', 3000);
       }
     };
 
@@ -239,12 +239,16 @@
     window.showInviteModal = function(contactId, contactName) {
       selectedContactId = contactId;
       document.getElementById('invite-user-name').textContent = `Inviting: ${contactName}`;
-      document.getElementById('invite-modal').classList.add('active');
+      const modal = document.getElementById('invite-modal');
+      modal.classList.remove('hidden');
+      modal.style.display = 'flex';
     };
 
     window.closeInviteModal = function() {
       selectedContactId = null;
-      document.getElementById('invite-modal').classList.remove('active');
+      const modal = document.getElementById('invite-modal');
+      modal.classList.add('hidden');
+      modal.style.display = 'none';
     };
 
     window.sendInvite = async function() {
