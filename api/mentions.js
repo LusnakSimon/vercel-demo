@@ -23,9 +23,8 @@ function parseMentions(text) {
 
 module.exports = async (req, res) => {
   // Require authentication
-  const authResult = await requireAuth(req, res);
-  if (!authResult) return;
-  const { user } = authResult;
+  const user = await requireAuth(req, res);
+  if (!user) return;
 
   const db = await getDb();
   const mentions = db.collection('mentions');
