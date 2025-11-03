@@ -134,7 +134,7 @@
                     </button>
                     <button 
                       class="btn btn-small btn-secondary" 
-                      onclick="showInviteModal('${contact._id}', '${escapeHtml(contact.name || contact.email)}')"
+                      onclick="showInviteModal('${contact._id}', '${escapeHtml(contact.name || contact.email)}', '${escapeHtml(contact.email)}')"
                       title="Invite to project"
                     >
                       📨 Invite
@@ -235,9 +235,11 @@
     };
 
     let selectedContactId = null;
+    let selectedContactEmail = null;
 
-    window.showInviteModal = function(contactId, contactName) {
+    window.showInviteModal = function(contactId, contactName, contactEmail) {
       selectedContactId = contactId;
+      selectedContactEmail = contactEmail;
       document.getElementById('invite-user-name').textContent = `Inviting: ${contactName}`;
       const modal = document.getElementById('invite-modal');
       modal.classList.remove('hidden');
@@ -246,6 +248,7 @@
 
     window.closeInviteModal = function() {
       selectedContactId = null;
+      selectedContactEmail = null;
       const modal = document.getElementById('invite-modal');
       modal.classList.add('hidden');
       modal.style.display = 'none';
@@ -259,12 +262,17 @@
         return;
       }
 
+      if (!selectedContactEmail) {
+        showToast('Contact email not found', 'error', 2000);
+        return;
+      }
+
       try {
         await api.request('/api/invitations', {
           method: 'POST',
           body: {
             projectId,
-            invitedUserId: selectedContactId
+            invitedUserEmail: selectedContactEmail
           }
         });
 
