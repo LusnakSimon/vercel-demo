@@ -134,7 +134,7 @@
                     </button>
                     <button 
                       class="btn btn-small btn-secondary" 
-                      onclick="showInviteModal('${contact._id}', '${escapeHtml(contact.name || contact.email)}', '${escapeHtml(contact.email)}')"
+                      onclick="showInviteModal('${contact._id}', '${escapeHtml(contact.name || contact.email)}', '${contact.email}')"
                       title="Invite to project"
                     >
                       📨 Invite
@@ -154,7 +154,7 @@
         </div>
 
         <!-- Invite to Project Modal -->
-        <div id="invite-modal" class="modal-overlay">
+        <div id="invite-modal" class="modal-overlay hidden" style="display: none;">
           <div class="modal">
             <h2>Invite to Project</h2>
             <p id="invite-user-name" class="muted"></p>
@@ -238,15 +238,17 @@
     let selectedContactEmail = null;
 
     window.showInviteModal = function(contactId, contactName, contactEmail) {
+      console.log('[Invite Modal] Opening with:', { contactId, contactName, contactEmail });
       selectedContactId = contactId;
       selectedContactEmail = contactEmail;
-      document.getElementById('invite-user-name').textContent = `Inviting: ${contactName}`;
+      document.getElementById('invite-user-name').textContent = `Inviting: ${contactName} (${contactEmail})`;
       const modal = document.getElementById('invite-modal');
       modal.classList.remove('hidden');
       modal.style.display = 'flex';
     };
 
     window.closeInviteModal = function() {
+      console.log('[Invite Modal] Closing');
       selectedContactId = null;
       selectedContactEmail = null;
       const modal = document.getElementById('invite-modal');
@@ -257,17 +259,21 @@
     window.sendInvite = async function() {
       const projectId = document.getElementById('project-select').value;
       
+      console.log('[Send Invite] Data:', { projectId, selectedContactEmail });
+      
       if (!projectId) {
         showToast('Please select a project', 'error', 2000);
         return;
       }
 
       if (!selectedContactEmail) {
-        showToast('Contact email not found', 'error', 2000);
+        showToast('Contact email not found. Please try again.', 'error', 3000);
+        console.error('[Send Invite] Missing email. Selected contact:', selectedContactId);
         return;
       }
 
       try {
+        console.log('[Send Invite] Sending invitation...');
         await api.request('/api/invitations', {
           method: 'POST',
           body: {
