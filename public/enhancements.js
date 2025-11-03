@@ -1071,6 +1071,15 @@
     initPullToRefresh();
     initContextMenu();
     initQuickActions();
+    
+    // Wire up help button
+    const helpBtn = document.getElementById('help-toggle');
+    if (helpBtn) {
+      helpBtn.addEventListener('click', (e) => {
+        e.preventDefault();
+        showKeyboardShortcuts();
+      });
+    }
 
     console.log('🚀 UI Enhancements loaded!');
   }
