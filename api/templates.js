@@ -3,13 +3,21 @@ const { getDb } = require('../lib/mongo');
 const { requireAuth } = require('../lib/auth');
 
 module.exports = async (req, res) => {
+  console.log('[Templates API] Request:', req.method);
+  
   // Require authentication
   const authResult = await requireAuth(req, res);
-  if (!authResult) return;
+  if (!authResult) {
+    console.log('[Templates API] Auth failed');
+    return;
+  }
   const { user } = authResult;
+  console.log('[Templates API] User authenticated:', user.email);
 
   try {
+    console.log('[Templates API] Getting database connection...');
     const db = await getDb();
+    console.log('[Templates API] Database connected');
     const templates = db.collection('templates');
 
   // GET: List all templates (built-in + user's custom templates)
@@ -205,10 +213,11 @@ module.exports = async (req, res) => {
       // Combine and return
       const allTemplates = [...builtInTemplates, ...customTemplates];
       
+      console.log('[Templates GET] Returning', allTemplates.length, 'templates');
       return res.json(allTemplates);
     } catch (err) {
       console.error('[Templates GET] Error:', err);
-      return res.status(500).json({ error: 'Failed to load templates' });
+      return res.status(500).json({ error: 'Failed to load templates', details: err.message });
     }
   }
 
