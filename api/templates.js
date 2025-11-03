@@ -6,12 +6,11 @@ module.exports = async (req, res) => {
   console.log('[Templates API] Request:', req.method);
   
   // Require authentication
-  const authResult = await requireAuth(req, res);
-  if (!authResult) {
+  const user = await requireAuth(req, res);
+  if (!user) {
     console.log('[Templates API] Auth failed');
     return;
   }
-  const { user } = authResult;
   console.log('[Templates API] User authenticated:', user.email);
 
   try {
