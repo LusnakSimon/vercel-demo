@@ -8,8 +8,9 @@ module.exports = async (req, res) => {
   if (!authResult) return;
   const { user } = authResult;
 
-  const db = await getDb();
-  const templates = db.collection('templates');
+  try {
+    const db = await getDb();
+    const templates = db.collection('templates');
 
   // GET: List all templates (built-in + user's custom templates)
   if (req.method === 'GET') {
@@ -278,4 +279,8 @@ module.exports = async (req, res) => {
   }
 
   return res.status(405).json({ error: 'Method not allowed' });
+  } catch (err) {
+    console.error('[Templates] Database connection error:', err);
+    return res.status(500).json({ error: 'Database connection failed', details: err.message });
+  }
 };
