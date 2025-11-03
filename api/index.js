@@ -25,6 +25,8 @@ const contacts = require('./contacts');
 const contactRequests = require('./contact_requests');
 const chat = require('./chat');
 const directMessages = require('./direct-messages');
+const demoData = require('./demo-data');
+const search = require('./search');
 
 module.exports = async (req, res) => {
   // Add security and caching headers
@@ -87,6 +89,12 @@ module.exports = async (req, res) => {
     }
     if (pathname === '/api/direct-messages') {
       return await directMessages(req, res);
+    }
+    if (pathname === '/api/demo-data') {
+      return await demoData(req, res);
+    }
+    if (pathname === '/api/search') {
+      return await search(req, res);
     }
     if (pathname === '/api/health') {
       return await health(req, res);

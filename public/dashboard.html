@@ -153,6 +153,11 @@
           
           console.log('Processed data:', { todosCount: todos.length, notesCount: notes.length, projectsCount: projects.length });
           
+          // Check if new user (no projects) and show welcome banner
+          if (projects.length === 0) {
+            showWelcomeBanner();
+          }
+          
           // Update stats
           const completedCount = todos.filter(t => t.done).length;
           const completionRate = todos.length > 0 ? Math.round((completedCount / todos.length) * 100) : 0;
@@ -301,6 +306,69 @@
         </div>
       `).join('');
     }
+    
+    async function showWelcomeBanner() {
+      const banner = document.createElement('div');
+      banner.id = 'welcome-banner';
+      banner.style.cssText = `
+        grid-column: 1 / -1;
+        background: linear-gradient(135deg, var(--accent) 0%, var(--accent-dark) 100%);
+        color: white;
+        padding: 32px;
+        border-radius: 16px;
+        margin-bottom: 24px;
+        box-shadow: var(--shadow-lg);
+        animation: slideIn 0.5s ease-out;
+      `;
+      
+      banner.innerHTML = `
+        <h2 style="margin: 0 0 16px 0; font-size: 28px;">👋 Welcome to Research Notebook!</h2>
+        <p style="margin: 0 0 24px 0; font-size: 16px; opacity: 0.95;">
+          Get started with a demo project that shows you around. It includes sample todos and helpful notes.
+        </p>
+        <div style="display: flex; gap: 12px; flex-wrap: wrap;">
+          <button class="btn" onclick="createDemoProject()" style="background: white; color: var(--accent); font-weight: 600;">
+            🚀 Create Demo Project
+          </button>
+          <button class="btn" onclick="dismissWelcome()" style="background: rgba(255,255,255,0.2); color: white;">
+            Maybe Later
+          </button>
+        </div>
+      `;
+      
+      const grid = document.getElementById('dashboard-grid');
+      grid.insertBefore(banner, grid.firstChild);
+    }
+    
+    window.createDemoProject = async function() {
+      const banner = document.getElementById('welcome-banner');
+      if (banner) {
+        banner.innerHTML = '<div style="text-align: center; padding: 20px;"><div class="spinner" style="margin: 0 auto 12px;"></div><p>Creating your demo project...</p></div>';
+      }
+      
+      try {
+        await api.request('/api/demo-data', { method: 'POST' });
+        showToast('Demo project created! Check your projects page.', 'success', 3000);
+        
+        // Refresh the page after a short delay
+        setTimeout(() => window.location.reload(), 1500);
+      } catch (err) {
+        console.error('Failed to create demo:', err);
+        showToast(err.userMessage || 'Failed to create demo project', 'error', 3000);
+        if (banner) {
+          banner.remove();
+        }
+      }
+    };
+    
+    window.dismissWelcome = function() {
+      const banner = document.getElementById('welcome-banner');
+      if (banner) {
+        banner.style.animation = 'slideOut 0.3s ease-in';
+        setTimeout(() => banner.remove(), 300);
+      }
+      localStorage.setItem('welcomeDismissed', 'true');
+    };
     
     document.addEventListener('DOMContentLoaded', () => {
       renderAuthActions();
