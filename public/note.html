@@ -545,7 +545,16 @@
         });
       } catch (err) {
         console.error('Failed to load templates:', err);
-        listEl.innerHTML = '<div class="muted center" style="padding: 40px;">Failed to load templates</div>';
+        const errorMsg = err.userMessage || err.error || 'Failed to load templates';
+        listEl.innerHTML = `
+          <div class="muted center" style="padding: 40px;">
+            <div style="font-size: 48px; margin-bottom: 16px;">😕</div>
+            <div>${escapeHtml(errorMsg)}</div>
+            <div style="font-size: 13px; margin-top: 8px;">
+              ${err.status === 401 ? 'Please try signing out and back in.' : 'Please try again later.'}
+            </div>
+          </div>
+        `;
       }
     }
     

@@ -674,7 +674,7 @@
     modal.style.zIndex = '10000';
     
     modal.innerHTML = `
-      <div class="modal" style="max-width: 600px;">
+      <div class="modal" style="max-width: 600px; max-height: 90vh; overflow-y: auto;">
         <h2 style="margin: 0 0 24px 0;">⌨️ Keyboard Shortcuts</h2>
         <div style="display: grid; gap: 12px;">
           <div style="display: grid; grid-template-columns: 1fr auto; gap: 16px; padding: 12px; background: var(--bg-secondary); border-radius: 8px;">
