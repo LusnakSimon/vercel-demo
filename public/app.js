@@ -22,7 +22,8 @@ const api = {
           error: errorMsg,
           status: res.status,
           statusText: res.statusText,
-          path: path
+          path: path,
+          details: json?.details // Pass through server error details
         };
         
         // User-friendly error messages
@@ -36,6 +37,10 @@ const api = {
           errorDetail.userMessage = errorMsg;
         } else if (res.status >= 500) {
           errorDetail.userMessage = 'Server error - please try again later';
+          // For 500 errors, show details if available
+          if (json?.details) {
+            errorDetail.userMessage += `: ${json.details}`;
+          }
         } else {
           errorDetail.userMessage = errorMsg;
         }

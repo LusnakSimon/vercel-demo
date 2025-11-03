@@ -23,6 +23,7 @@ module.exports = async (req, res) => {
   // GET: List all templates (built-in + user's custom templates)
   if (req.method === 'GET') {
     try {
+      console.log('[Templates GET] Building built-in templates...');
       // Built-in templates (no userId means built-in)
       const builtInTemplates = [
         {
@@ -205,10 +206,13 @@ module.exports = async (req, res) => {
         }
       ];
 
+      console.log('[Templates GET] Querying custom templates for user:', user._id);
       // Get user's custom templates
       const customTemplates = await templates.find({ 
         userId: new ObjectId(user._id) 
       }).toArray();
+      
+      console.log('[Templates GET] Found', customTemplates.length, 'custom templates');
 
       // Combine and return
       const allTemplates = [...builtInTemplates, ...customTemplates];
@@ -217,6 +221,7 @@ module.exports = async (req, res) => {
       return res.json(allTemplates);
     } catch (err) {
       console.error('[Templates GET] Error:', err);
+      console.error('[Templates GET] Error stack:', err.stack);
       return res.status(500).json({ error: 'Failed to load templates', details: err.message });
     }
   }
