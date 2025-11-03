@@ -211,7 +211,10 @@
         const v = bodyEl.value;
         const preview = document.getElementById('note-preview');
         if (window.marked) {
-          preview.innerHTML = marked.parse(v);
+          let html = marked.parse(v);
+          // Highlight @mentions
+          html = html.replace(/@([\w.+-]+@[\w.-]+|[\w]+)/g, '<span class="mention">@$1</span>');
+          preview.innerHTML = html;
           // Apply syntax highlighting to code blocks
           preview.querySelectorAll('pre code').forEach((block) => {
             hljs.highlightElement(block);

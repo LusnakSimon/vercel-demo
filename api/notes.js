@@ -12,6 +12,59 @@ try {
   broadcastUpdate = () => {};
 }
 
+// Import mentions helper
+let parseMentions;
+try {
+  const mentionsModule = require('./mentions');
+  parseMentions = mentionsModule.parseMentions;
+} catch (e) {
+  parseMentions = () => [];
+}
+
+// Helper to create mentions from note
+async function createMentionsForNote(db, noteId, title, bodyMarkdown, authorId) {
+  if (!parseMentions || !bodyMarkdown) return;
+  
+  try {
+    const mentionStrings = parseMentions(bodyMarkdown);
+    if (mentionStrings.length === 0) return;
+    
+    const users = db.collection('users');
+    const mentions = db.collection('mentions');
+    
+    // Find mentioned users
+    const mentionedUsers = await users.find({
+      $or: [
+        { email: { $in: mentionStrings } },
+        { name: { $in: mentionStrings } }
+      ]
+    }).toArray();
+    
+    // Don't mention the author
+    const filteredUsers = mentionedUsers.filter(u => 
+      String(u._id) !== String(authorId)
+    );
+    
+    if (filteredUsers.length === 0) return;
+    
+    // Create mention records
+    const mentionDocs = filteredUsers.map(mentionedUser => ({
+      authorId: new ObjectId(authorId),
+      mentionedUserId: new ObjectId(mentionedUser._id),
+      contentType: 'note',
+      contentId: String(noteId),
+      contentTitle: title || 'Untitled Note',
+      text: bodyMarkdown.substring(0, 200),
+      read: false,
+      createdAt: new Date()
+    }));
+    
+    await mentions.insertMany(mentionDocs);
+  } catch (err) {
+    console.error('[Mentions] Failed to create mentions:', err);
+  }
+}
+
 // Notes API: supports simple CRUD and text search (title + body + tags)
 module.exports = async (req, res) => {
   try {
@@ -112,6 +165,10 @@ module.exports = async (req, res) => {
       };
       const r = await notes.insertOne(doc);
       doc._id = r.insertedId;
+      
+      // Create mentions
+      await createMentionsForNote(db, doc._id, doc.title, doc.bodyMarkdown, user._id);
+      
       // Optionally ensure project exists (no strict enforcement here)
       if (doc.projectId) {
         await projects.updateOne({ _id: new ObjectId(doc.projectId) }, { $setOnInsert: { createdAt: new Date() } }, { upsert: false }).catch(() => {});
@@ -136,6 +193,11 @@ module.exports = async (req, res) => {
       updates.updatedAt = new Date();
       await notes.updateOne({ _id: new ObjectId(id) }, { $set: updates });
       const updated = await notes.findOne({ _id: new ObjectId(id) });
+      
+      // Create mentions if bodyMarkdown was updated
+      if (updates.bodyMarkdown) {
+        await createMentionsForNote(db, id, updated.title, updates.bodyMarkdown, user._id);
+      }
       
       // Broadcast update to collaborators
       if (existing.projectId) {

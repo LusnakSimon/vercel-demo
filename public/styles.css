@@ -983,6 +983,55 @@ input::placeholder, textarea::placeholder {
   line-height: 1.4;
 }
 
+/* Mentions */
+.mention {
+  color: var(--accent);
+  background: rgba(59, 130, 246, 0.1);
+  padding: 2px 6px;
+  border-radius: 4px;
+  font-weight: 500;
+  text-decoration: none;
+  transition: all 0.2s;
+}
+
+.mention:hover {
+  background: rgba(59, 130, 246, 0.2);
+  text-decoration: underline;
+}
+
+.mention-autocomplete {
+  position: absolute;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  box-shadow: var(--shadow-lg);
+  max-height: 200px;
+  overflow-y: auto;
+  z-index: 1000;
+  min-width: 200px;
+}
+
+.mention-suggestion {
+  padding: 8px 12px;
+  cursor: pointer;
+  transition: background 0.2s;
+}
+
+.mention-suggestion:hover,
+.mention-suggestion.selected {
+  background: var(--surface-hover);
+}
+
+.mention-suggestion .name {
+  font-weight: 500;
+  font-size: 14px;
+}
+
+.mention-suggestion .email {
+  font-size: 12px;
+  color: var(--text-secondary);
+}
+
 .muted {
   color: var(--text-secondary);
   font-size: 14px;
