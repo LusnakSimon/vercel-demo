@@ -311,6 +311,11 @@
     };
 
     window.respondToRequest = async function(requestId, action) {
+      // Optimistic update - remove from pending immediately
+      pendingRequests = pendingRequests.filter(r => String(r._id) !== String(requestId));
+      renderPage();
+      showToast(action === 'accept' ? 'Accepting...' : 'Declining...', 'info', 1000);
+
       try {
         await api.request('/api/contact_requests', {
           method: 'PATCH',
@@ -320,7 +325,11 @@
         showToast(action === 'accept' ? 'Contact request accepted!' : 'Request declined', 'success', 2000);
         await Promise.all([loadPendingRequests(), loadContacts()]);
         renderPage();
+        if (window.updateNotificationBadge) window.updateNotificationBadge();
       } catch (err) {
+        // Revert optimistic update on error
+        await loadPendingRequests();
+        renderPage();
         showToast(err.userMessage || 'Failed to respond', 'error', 3000);
       }
     };
@@ -328,15 +337,24 @@
     window.cancelRequest = async function(requestId) {
       if (!confirm('Cancel this contact request?')) return;
 
+      // Optimistic update - remove immediately from UI
+      sentRequests = sentRequests.filter(r => String(r._id) !== String(requestId));
+      renderPage();
+      showToast('Cancelling...', 'info', 1000);
+
       try {
         await api.request('/api/contact_requests?requestId=' + requestId, {
           method: 'DELETE'
         });
 
         showToast('Request cancelled', 'success', 2000);
+        // Refresh to ensure consistency
         await loadSentRequests();
         renderPage();
       } catch (err) {
+        // Revert optimistic update on error
+        await loadSentRequests();
+        renderPage();
         showToast(err.userMessage || 'Failed to cancel request', 'error', 3000);
       }
     };

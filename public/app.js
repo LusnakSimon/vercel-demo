@@ -559,3 +559,53 @@ function confirmDialog(title, message) {
     });
   });
 }
+
+// Notification badge helper
+async function updateNotificationBadge() {
+  try {
+    // Check if user is authenticated
+    const authRes = await api.request('/api/auth/me').catch(() => null);
+    if (!authRes || !authRes.user) return;
+    
+    // Count pending notifications
+    const [contactRequests, invitations] = await Promise.all([
+      api.request('/api/contact_requests').catch(() => []),
+      api.request('/api/invitations').catch(() => [])
+    ]);
+    
+    const count = (contactRequests?.length || 0) + (invitations?.length || 0);
+    
+    // Update Contacts link with badge
+    const contactsLinks = document.querySelectorAll('a[href="/contacts.html"]');
+    contactsLinks.forEach(link => {
+      let badge = link.querySelector('.notification-badge');
+      if (count > 0) {
+        if (!badge) {
+          badge = document.createElement('span');
+          badge.className = 'notification-badge';
+          link.style.position = 'relative';
+          link.appendChild(badge);
+        }
+        badge.textContent = count;
+        badge.style.display = 'inline-block';
+      } else if (badge) {
+        badge.style.display = 'none';
+      }
+    });
+  } catch (err) {
+    console.log('[Notifications] Failed to update badge:', err);
+  }
+}
+
+// Call on page load
+if (document.readyState === 'loading') {
+  document.addEventListener('DOMContentLoaded', updateNotificationBadge);
+} else {
+  updateNotificationBadge();
+}
+
+// Refresh badge periodically (every 30 seconds)
+setInterval(updateNotificationBadge, 30000);
+
+// Expose globally
+window.updateNotificationBadge = updateNotificationBadge;

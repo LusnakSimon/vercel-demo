@@ -36,14 +36,115 @@
       </nav>
     </header>
 
+    <div class="card" style="margin-bottom: 24px;">
+      <h2>👥 Contact Requests</h2>
+      <div id="contact-requests-list"></div>
+    </div>
+
     <div class="card">
-      <h2>Project Invitations</h2>
+      <h2>📁 Project Invitations</h2>
       <div id="invitations-list"></div>
     </div>
   </div>
 
   <script src="/app.js"></script>
   <script>
+    async function loadContactRequests() {
+      const list = document.getElementById('contact-requests-list');
+      list.innerHTML = '<div class="muted center" style="padding: 40px;"><div class="spinner" style="margin: 0 auto 12px;"></div>Loading...</div>';
+      
+      try {
+        const requests = await api.request('/api/contact_requests');
+        
+        if (!requests || requests.length === 0) {
+          list.innerHTML = `
+            <div class="muted center" style="padding: 40px;">
+              <div style="font-size: 48px; margin-bottom: 12px; opacity: 0.3;">👥</div>
+              <div style="font-size: 16px;">No pending contact requests</div>
+            </div>
+          `;
+          return;
+        }
+        
+        list.innerHTML = '';
+        requests.forEach(request => {
+          const card = document.createElement('div');
+          card.style.cssText = 'padding: 20px; margin-bottom: 16px; border: 1px solid var(--border); border-radius: var(--radius-md); background: var(--surface);';
+          
+          const userName = request.user ? (request.user.name || request.user.email) : 'Unknown User';
+          const userEmail = request.user ? request.user.email : '';
+          
+          card.innerHTML = `
+            <div style="margin-bottom: 16px;">
+              <div style="font-size: 18px; font-weight: 600; margin-bottom: 8px;">
+                👤 ${escapeHtml(userName)}
+              </div>
+              <div class="muted">
+                ${escapeHtml(userEmail)} wants to add you as a contact
+              </div>
+              <div class="muted small" style="margin-top: 4px;">
+                ${new Date(request.createdAt).toLocaleString()}
+              </div>
+            </div>
+            <div style="display: flex; gap: 8px;">
+              <button 
+                class="btn btn-primary" 
+                onclick="respondToContactRequest('${request._id}', 'accept')"
+                id="accept-contact-${request._id}"
+              >
+                ✓ Accept
+              </button>
+              <button 
+                class="btn btn-secondary" 
+                onclick="respondToContactRequest('${request._id}', 'decline')"
+                id="decline-contact-${request._id}"
+              >
+                ✗ Decline
+              </button>
+            </div>
+          `;
+          
+          list.appendChild(card);
+        });
+      } catch (err) {
+        const errorMsg = err.userMessage || 'Failed to load contact requests';
+        list.innerHTML = `<div class="muted center" style="padding: 40px;">${escapeHtml(errorMsg)}</div>`;
+      }
+    }
+    
+    async function respondToContactRequest(requestId, action) {
+      try {
+        const acceptBtn = document.getElementById('accept-contact-' + requestId);
+        const declineBtn = document.getElementById('decline-contact-' + requestId);
+        
+        if (acceptBtn) acceptBtn.disabled = true;
+        if (declineBtn) declineBtn.disabled = true;
+        
+        await api.request('/api/contact_requests', {
+          method: 'PATCH',
+          body: { requestId, action }
+        });
+        
+        if (action === 'accept') {
+          showToast('Contact request accepted!', 'success', 2000);
+        } else {
+          showToast('Contact request declined', 'success', 2000);
+        }
+        
+        // Reload
+        setTimeout(() => loadContactRequests(), 1000);
+        if (window.updateNotificationBadge) window.updateNotificationBadge();
+      } catch (err) {
+        const errorMsg = err.userMessage || 'Failed to respond';
+        showToast(errorMsg, 'error', 3000);
+        
+        const acceptBtn = document.getElementById('accept-contact-' + requestId);
+        const declineBtn = document.getElementById('decline-contact-' + requestId);
+        if (acceptBtn) acceptBtn.disabled = false;
+        if (declineBtn) declineBtn.disabled = false;
+      }
+    }
+
     async function loadInvitations() {
       const list = document.getElementById('invitations-list');
       list.innerHTML = '<div class="muted center" style="padding: 40px;"><div class="spinner" style="margin: 0 auto 12px;"></div>Loading...</div>';
@@ -131,6 +232,7 @@
         
         // Reload invitations
         setTimeout(() => loadInvitations(), 1000);
+        if (window.updateNotificationBadge) window.updateNotificationBadge();
       } catch (err) {
         const errorMsg = err.userMessage || 'Failed to respond to invitation';
         showToast(errorMsg, 'error', 3000);
@@ -144,6 +246,7 @@
     
     // Initialize
     renderAuthActions();
+    loadContactRequests();
     loadInvitations();
     
     // Listen for real-time invitation updates
