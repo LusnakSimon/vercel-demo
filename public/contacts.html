@@ -44,6 +44,8 @@
     let currentUser = null;
     let contacts = [];
     let allProjects = [];
+    let pendingRequests = [];
+    let sentRequests = [];
 
     async function init() {
       renderAuthActions();
@@ -61,8 +63,12 @@
         return;
       }
 
-      await loadContacts();
-      await loadProjects();
+      await Promise.all([
+        loadContacts(),
+        loadProjects(),
+        loadPendingRequests(),
+        loadSentRequests()
+      ]);
       renderPage();
     }
 
@@ -83,13 +89,63 @@
       }
     }
 
+    async function loadPendingRequests() {
+      try {
+        pendingRequests = await api.request('/api/contact_requests');
+      } catch (err) {
+        pendingRequests = [];
+      }
+    }
+
+    async function loadSentRequests() {
+      try {
+        sentRequests = await api.request('/api/contact_requests?sent=true');
+      } catch (err) {
+        sentRequests = [];
+      }
+    }
+
     function renderPage() {
       const app = document.getElementById('app');
       app.innerHTML = `
         <div style="margin-top: 24px;">
+          <!-- Pending Requests Section -->
+          ${pendingRequests.length > 0 ? `
+            <div style="margin-bottom: 32px; padding: 16px; background: var(--bg-card); border-radius: 8px; border: 2px solid var(--primary);">
+              <h3 style="margin: 0 0 16px 0;">📬 Contact Requests (${pendingRequests.length})</h3>
+              <div class="contacts-grid">
+                ${pendingRequests.map(req => `
+                  <div class="contact-card">
+                    <div class="contact-header">
+                      <div class="contact-avatar">${req.user?.name ? req.user.name[0].toUpperCase() : '?'}</div>
+                      <div class="contact-info">
+                        <div class="contact-name">${escapeHtml(req.user?.name || 'Unknown')}</div>
+                        <div class="contact-email">${escapeHtml(req.user?.email || '')}</div>
+                      </div>
+                    </div>
+                    <div class="contact-actions">
+                      <button 
+                        class="btn btn-small btn-primary" 
+                        onclick="respondToRequest('${req._id}', 'accept')"
+                      >
+                        ✅ Accept
+                      </button>
+                      <button 
+                        class="btn btn-small btn-secondary" 
+                        onclick="respondToRequest('${req._id}', 'decline')"
+                      >
+                        ❌ Decline
+                      </button>
+                    </div>
+                  </div>
+                `).join('')}
+              </div>
+            </div>
+          ` : ''}
+
           <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 24px;">
             <div>
-              <h2 style="margin: 0 0 4px 0;">👥 Contacts</h2>
+              <h2 style="margin: 0 0 4px 0;">👥 My Contacts</h2>
               <p class="muted" style="margin: 0;">Manage your frequent collaborators</p>
             </div>
           </div>
@@ -98,20 +154,50 @@
             <input 
               type="email" 
               id="add-contact-input" 
-              placeholder="Enter email to add contact..." 
+              placeholder="Enter email to send contact request..." 
               class="form-input"
               style="flex: 1;"
             >
-            <button class="btn btn-primary" onclick="addContactByEmail()">
-              ➕ Add Contact
+            <button class="btn btn-primary" onclick="sendContactRequest()">
+              📤 Send Request
             </button>
           </div>
+
+          <!-- Sent Requests -->
+          ${sentRequests.length > 0 ? `
+            <details style="margin-bottom: 24px;">
+              <summary style="cursor: pointer; padding: 8px; background: var(--bg-secondary); border-radius: 4px;">
+                📨 Sent Requests (${sentRequests.length})
+              </summary>
+              <div class="contacts-grid" style="margin-top: 12px;">
+                ${sentRequests.map(req => `
+                  <div class="contact-card">
+                    <div class="contact-header">
+                      <div class="contact-avatar">${req.user?.name ? req.user.name[0].toUpperCase() : '?'}</div>
+                      <div class="contact-info">
+                        <div class="contact-name">${escapeHtml(req.user?.name || 'Unknown')}</div>
+                        <div class="contact-email">${escapeHtml(req.user?.email || '')}</div>
+                      </div>
+                    </div>
+                    <div class="contact-actions">
+                      <button 
+                        class="btn btn-small btn-danger" 
+                        onclick="cancelRequest('${req._id}')"
+                      >
+                        ❌ Cancel
+                      </button>
+                    </div>
+                  </div>
+                `).join('')}
+              </div>
+            </details>
+          ` : ''}
 
           ${contacts.length === 0 ? `
             <div class="empty-state">
               <div class="empty-icon">👥</div>
               <h3>No contacts yet</h3>
-              <p>Add contacts to quickly invite them to projects</p>
+              <p>Send a contact request to get started</p>
             </div>
           ` : `
             <div class="contacts-grid">
@@ -180,7 +266,7 @@
       return div.innerHTML;
     }
 
-    window.addContactByEmail = async function() {
+    window.sendContactRequest = async function() {
       const input = document.getElementById('add-contact-input');
       const email = input.value.trim();
 
@@ -190,27 +276,68 @@
       }
 
       try {
-        // Find user by email (returns single user object, not array)
+        // Find user by email
         const user = await api.request('/api/users?email=' + encodeURIComponent(email));
         
         if (!user || !user._id) {
-          showToast('User not found', 'error', 2000);
+          showToast(`No user found with email: ${email}`, 'error', 3000);
           return;
         }
         
-        // Add as contact
-        await api.request('/api/contacts', {
+        // Send contact request
+        await api.request('/api/contact_requests', {
           method: 'POST',
-          body: { contactId: user._id }
+          body: { toUserId: user._id }
         });
 
-        showToast('Contact added!', 'success', 2000);
+        showToast('Contact request sent!', 'success', 2000);
         input.value = '';
-        await loadContacts();
+        await loadSentRequests();
         renderPage();
       } catch (err) {
-        console.error('Add contact error:', err);
-        showToast(err.userMessage || err.error || 'Failed to add contact', 'error', 3000);
+        console.error('Send request error:', err);
+        let errorMsg = 'Failed to send request';
+        if (err.error === 'request already exists') {
+          errorMsg = 'A contact request already exists with this user';
+        } else if (err.error === 'already in contacts') {
+          errorMsg = 'Already in your contacts';
+        } else if (err.error === 'user not found') {
+          errorMsg = `No user found with email: ${email}`;
+        } else if (err.error) {
+          errorMsg = err.error;
+        }
+        showToast(errorMsg, 'error', 3000);
+      }
+    };
+
+    window.respondToRequest = async function(requestId, action) {
+      try {
+        await api.request('/api/contact_requests', {
+          method: 'PATCH',
+          body: { requestId, action }
+        });
+
+        showToast(action === 'accept' ? 'Contact request accepted!' : 'Request declined', 'success', 2000);
+        await Promise.all([loadPendingRequests(), loadContacts()]);
+        renderPage();
+      } catch (err) {
+        showToast(err.userMessage || 'Failed to respond', 'error', 3000);
+      }
+    };
+
+    window.cancelRequest = async function(requestId) {
+      if (!confirm('Cancel this contact request?')) return;
+
+      try {
+        await api.request('/api/contact_requests?requestId=' + requestId, {
+          method: 'DELETE'
+        });
+
+        showToast('Request cancelled', 'success', 2000);
+        await loadSentRequests();
+        renderPage();
+      } catch (err) {
+        showToast(err.userMessage || 'Failed to cancel request', 'error', 3000);
       }
     };
 

@@ -14,7 +14,12 @@ module.exports = async (req, res) => {
         const doc = await projects.findOne({ _id: new ObjectId(id) });
         return res.status(200).json(doc || {});
       }
-      const list = await projects.find({}).sort({ createdAt: -1 }).toArray();
+      
+      // Only return projects where user is a member
+      if (!authUser) return res.status(401).json({ error: 'unauthenticated' });
+      const list = await projects.find({ 
+        members: String(authUser._id) 
+      }).sort({ createdAt: -1 }).toArray();
       return res.status(200).json(list);
     }
 

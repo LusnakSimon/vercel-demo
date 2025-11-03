@@ -27,45 +27,12 @@ module.exports = async (req, res) => {
       return res.status(200).json(contactUsers);
     }
     
-    // POST - Add contact
+    // POST - Direct contact addition is disabled. Use /api/contact_requests instead.
     if (req.method === 'POST') {
-      const { contactId } = req.body || {};
-      
-      if (!contactId) {
-        return res.status(400).json({ error: 'contactId required' });
-      }
-      
-      // Can't add yourself
-      if (String(contactId) === String(user._id)) {
-        return res.status(400).json({ error: 'cannot add yourself as contact' });
-      }
-      
-      // Check if contact exists
-      const contactUser = await users.findOne({ _id: new ObjectId(contactId) });
-      if (!contactUser) {
-        return res.status(404).json({ error: 'user not found' });
-      }
-      
-      // Check if already a contact
-      const existing = await contacts.findOne({
-        userId: String(user._id),
-        contactId: String(contactId)
+      return res.status(400).json({ 
+        error: 'direct contact addition not allowed',
+        message: 'Please send a contact request via /api/contact_requests'
       });
-      
-      if (existing) {
-        return res.status(400).json({ error: 'already in contacts' });
-      }
-      
-      // Add contact
-      const contact = {
-        userId: String(user._id),
-        contactId: String(contactId),
-        addedAt: new Date()
-      };
-      
-      await contacts.insertOne(contact);
-      
-      return res.status(201).json({ ok: true, contact: contactUser });
     }
     
     // DELETE - Remove contact

@@ -22,6 +22,7 @@ const uploadImages = require('./uploads/images');
 const getImage = require('./uploads/images/[id]');
 const invitations = require('./invitations');
 const contacts = require('./contacts');
+const contactRequests = require('./contact_requests');
 const chat = require('./chat');
 const directMessages = require('./direct-messages');
 
@@ -77,6 +78,9 @@ module.exports = async (req, res) => {
     }
     if (pathname === '/api/contacts') {
       return await contacts(req, res);
+    }
+    if (pathname === '/api/contact_requests') {
+      return await contactRequests(req, res);
     }
     if (pathname === '/api/chat') {
       return await chat(req, res);
