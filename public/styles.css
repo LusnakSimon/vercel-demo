@@ -439,6 +439,47 @@ input::placeholder, textarea::placeholder {
   color: var(--text-secondary);
 }
 
+.subtask-summary {
+  font-size: 12px;
+  color: var(--text-secondary);
+  margin-top: 6px;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.subtask-progress {
+  display: inline-block;
+  background: var(--surface-hover);
+  padding: 2px 8px;
+  border-radius: 4px;
+  font-weight: 500;
+}
+
+.subtask-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 0;
+  border-bottom: 1px solid var(--border);
+}
+
+.subtask-item:last-child {
+  border-bottom: none;
+}
+
+.subtask-item input[type="checkbox"] {
+  width: 16px;
+  height: 16px;
+  cursor: pointer;
+  flex-shrink: 0;
+}
+
+.subtask-item span {
+  flex: 1;
+  font-size: 14px;
+}
+
 .todo-actions {
   display: flex;
   gap: 8px;
@@ -588,31 +629,122 @@ input::placeholder, textarea::placeholder {
 .note-preview {
   min-height: 400px;
   border-radius: var(--radius-md);
-  padding: 16px;
+  padding: 24px;
   background: var(--surface);
   border: 1px solid var(--border);
   overflow: auto;
+  line-height: 1.7;
 }
 
 .note-preview h1 {
-  font-size: 28px;
-  margin-bottom: 16px;
+  font-size: 32px;
+  margin-bottom: 20px;
+  margin-top: 28px;
+  font-weight: 700;
+  border-bottom: 2px solid var(--border);
+  padding-bottom: 8px;
+}
+
+.note-preview h1:first-child {
+  margin-top: 0;
 }
 
 .note-preview h2 {
+  font-size: 26px;
+  margin: 28px 0 16px;
+  font-weight: 600;
+}
+
+.note-preview h3 {
   font-size: 22px;
   margin: 24px 0 12px;
+  font-weight: 600;
 }
 
 .note-preview p {
-  margin-bottom: 12px;
+  margin-bottom: 16px;
+}
+
+.note-preview ul, .note-preview ol {
+  margin: 12px 0 16px 24px;
+  padding-left: 8px;
+}
+
+.note-preview li {
+  margin-bottom: 8px;
 }
 
 .note-preview code {
   background: var(--bg-primary);
-  padding: 2px 6px;
+  padding: 3px 6px;
   border-radius: 4px;
+  font-size: 14px;
+  font-family: 'SF Mono', 'Monaco', 'Courier New', monospace;
+  color: var(--accent);
+}
+
+.note-preview pre {
+  background: var(--bg-primary);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 16px;
+  margin: 16px 0;
+  overflow-x: auto;
+}
+
+.note-preview pre code {
+  background: transparent;
+  padding: 0;
+  color: inherit;
   font-size: 13px;
+  line-height: 1.6;
+}
+
+.note-preview blockquote {
+  border-left: 4px solid var(--accent);
+  padding-left: 16px;
+  margin: 16px 0;
+  color: var(--text-secondary);
+  font-style: italic;
+}
+
+.note-preview a {
+  color: var(--accent);
+  text-decoration: underline;
+}
+
+.note-preview a:hover {
+  color: var(--accent-hover);
+}
+
+.note-preview img {
+  max-width: 100%;
+  height: auto;
+  border-radius: 8px;
+  margin: 16px 0;
+}
+
+.note-preview table {
+  width: 100%;
+  border-collapse: collapse;
+  margin: 16px 0;
+}
+
+.note-preview th, .note-preview td {
+  border: 1px solid var(--border);
+  padding: 8px 12px;
+  text-align: left;
+}
+
+.note-preview th {
+  background: var(--bg-secondary);
+  font-weight: 600;
+}
+
+.note-preview hr {
+  border: none;
+  border-top: 2px solid var(--border);
+  margin: 24px 0;
 }
 
 .note-meta {

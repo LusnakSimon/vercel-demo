@@ -114,6 +114,14 @@
           <input id="modal-tags-input" type="text" placeholder="work, urgent, personal..." />
           <div id="modal-tags-preview" class="tags-container"></div>
         </div>
+        <div>
+          <label>Subtasks</label>
+          <div id="modal-subtasks-list" style="margin-bottom: 8px;"></div>
+          <div style="display: flex; gap: 8px;">
+            <input id="subtask-input" type="text" placeholder="Add a subtask..." style="flex: 1;" />
+            <button type="button" class="btn btn-secondary" onclick="addSubtask()">+ Add</button>
+          </div>
+        </div>
         <div class="modal-actions">
           <button type="button" class="btn btn-secondary" id="modal-cancel">Cancel</button>
           <button type="submit" class="btn btn-primary" id="modal-save">Save Changes</button>
@@ -261,10 +269,22 @@
           }
         });
         
+        // Subtasks summary
+        let subtasksSummary = '';
+        if (t.subtasks && t.subtasks.length > 0) {
+          const completed = t.subtasks.filter(st => st.done).length;
+          const total = t.subtasks.length;
+          subtasksSummary = `<div class="subtask-summary">
+            <span class="subtask-progress">${completed}/${total}</span>
+            <span>subtasks completed</span>
+          </div>`;
+        }
+        
         li.innerHTML = `
           <div class="todo-content">
             <div class="todo-title">${escapeHtml(t.title)}</div>
             ${desc}
+            ${subtasksSummary}
             ${dueDateHtml}
             ${t.tags && t.tags.length ? `<div class="tags-container">${t.tags.map(tag => `<span class="tag">${escapeHtml(tag)}</span>`).join('')}</div>` : ''}
           </div>

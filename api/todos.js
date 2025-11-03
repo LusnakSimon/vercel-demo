@@ -81,9 +81,11 @@ module.exports = async (req, res) => {
         description: description ? String(description).trim() : '', 
         projectId: projectId || null, 
         ownerId: String(authUser._id), 
+        userId: String(authUser._id), // For compatibility
         done: false, 
         tags: tagArray,
         dueDate: dueDateObj,
+        subtasks: [], // Initialize empty subtasks array
         createdAt: new Date() 
       };
       const r = await todos.insertOne(doc);
@@ -128,6 +130,20 @@ module.exports = async (req, res) => {
           }
           updates.dueDate = dueDateObj;
         }
+      }
+      
+      // Process subtasks if provided
+      if (updates.subtasks !== undefined) {
+        if (!Array.isArray(updates.subtasks)) {
+          return res.status(400).json({ error: 'subtasks must be an array' });
+        }
+        // Validate subtasks structure
+        const validSubtasks = updates.subtasks.map((st, idx) => ({
+          id: st.id || `subtask-${Date.now()}-${idx}`,
+          text: String(st.text || '').trim(),
+          done: Boolean(st.done)
+        })).filter(st => st.text);
+        updates.subtasks = validSubtasks;
       }
       
       updates.updatedAt = new Date();

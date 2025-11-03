@@ -220,6 +220,17 @@ async function loadTodosList() {
       li.className = 'todo-item' + (t.done ? ' done' : '');
       const desc = t.description ? `<div class="todo-description">${escapeHtml(t.description)}</div>` : '';
       
+      // Subtasks summary
+      let subtasksSummary = '';
+      if (t.subtasks && t.subtasks.length > 0) {
+        const completed = t.subtasks.filter(st => st.done).length;
+        const total = t.subtasks.length;
+        subtasksSummary = `<div class="subtask-summary">
+          <span class="subtask-progress">${completed}/${total}</span>
+          <span>subtasks completed</span>
+        </div>`;
+      }
+      
       // Add checkbox for marking complete
       const checkbox = document.createElement('input');
       checkbox.type = 'checkbox';
@@ -239,7 +250,7 @@ async function loadTodosList() {
         }
       });
       
-      li.innerHTML = `<div class="todo-content"><div class="todo-title">${escapeHtml(t.title)}</div>${desc}</div>`;
+      li.innerHTML = `<div class="todo-content"><div class="todo-title">${escapeHtml(t.title)}</div>${desc}${subtasksSummary}</div>`;
       li.insertBefore(checkbox, li.firstChild);
       const actions = document.createElement('div');
       actions.className = 'todo-actions';
@@ -318,6 +329,57 @@ document.addEventListener('click', async (ev) => {
   }
 });
 
+// Subtask management
+let currentSubtasks = [];
+
+function addSubtask() {
+  const input = document.getElementById('subtask-input');
+  const text = input.value.trim();
+  if (!text) return;
+  
+  const subtask = {
+    id: `subtask-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
+    text: text,
+    done: false
+  };
+  
+  currentSubtasks.push(subtask);
+  renderSubtasks();
+  input.value = '';
+  input.focus();
+}
+
+function toggleSubtask(id) {
+  const subtask = currentSubtasks.find(st => st.id === id);
+  if (subtask) {
+    subtask.done = !subtask.done;
+    renderSubtasks();
+  }
+}
+
+function deleteSubtask(id) {
+  currentSubtasks = currentSubtasks.filter(st => st.id !== id);
+  renderSubtasks();
+}
+
+function renderSubtasks() {
+  const list = document.getElementById('modal-subtasks-list');
+  if (!list) return;
+  
+  if (currentSubtasks.length === 0) {
+    list.innerHTML = '<div class="muted" style="font-size: 14px; padding: 8px 0;">No subtasks yet</div>';
+    return;
+  }
+  
+  list.innerHTML = currentSubtasks.map(st => `
+    <div class="subtask-item" style="display: flex; align-items: center; gap: 8px; padding: 6px 0;">
+      <input type="checkbox" ${st.done ? 'checked' : ''} onchange="toggleSubtask('${st.id}')" />
+      <span style="flex: 1; ${st.done ? 'text-decoration: line-through; opacity: 0.6;' : ''}">${escapeHtml(st.text)}</span>
+      <button type="button" class="btn btn-sm btn-danger" onclick="deleteSubtask('${st.id}')" style="padding: 2px 8px; font-size: 12px;">×</button>
+    </div>
+  `).join('');
+}
+
 // Modal editor functions
 function openTodoModal(id) {
   const overlay = document.getElementById('modal-overlay');
@@ -349,6 +411,10 @@ function openTodoModal(id) {
       const due = new Date(t.dueDate);
       dueDateInput.value = due.toISOString().split('T')[0];
     }
+    // Load subtasks
+    currentSubtasks = t.subtasks || [];
+    renderSubtasks();
+    
     document.getElementById('modal-form').dataset.id = id;
     titleInput.focus();
   }).catch(e=>{ showToast('Unable to load todo', 'error'); });
@@ -359,6 +425,8 @@ function closeTodoModal() {
   overlay.classList.add('hidden');
   overlay.style.display = 'none';
   document.getElementById('modal-form').removeAttribute('data-id');
+  currentSubtasks = [];
+  renderSubtasks();
 }
 
 // handle modal form submit
@@ -375,7 +443,10 @@ document.addEventListener('submit', async (ev) => {
     if (!title) { showToast('Title required', 'error'); return; }
     try {
       document.getElementById('modal-save').disabled = true;
-      await api.request('/api/todos?id=' + encodeURIComponent(id), { method: 'PATCH', body: { title, description, tags, dueDate } });
+      await api.request('/api/todos?id=' + encodeURIComponent(id), { 
+        method: 'PATCH', 
+        body: { title, description, tags, dueDate, subtasks: currentSubtasks } 
+      });
       showToast('Todo updated', 'success', 1000);
       closeTodoModal();
       await reloadTodos();
@@ -609,3 +680,7 @@ setInterval(updateNotificationBadge, 30000);
 
 // Expose globally
 window.updateNotificationBadge = updateNotificationBadge;
+window.addSubtask = addSubtask;
+window.toggleSubtask = toggleSubtask;
+window.deleteSubtask = deleteSubtask;
+
