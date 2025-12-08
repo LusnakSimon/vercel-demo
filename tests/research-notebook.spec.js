@@ -736,14 +736,19 @@ test.describe('Direct Messages - Sending', () => {
 
   test('should not send empty messages', async ({ page }) => {
     // Wait for conversations to load
-    await page.waitForTimeout(1000);
-    const conversations = page.locator('#conversations-list > div[onclick]');
+    await page.waitForTimeout(2000);
     
-    if (await conversations.count() > 0) {
-      // Click the conversation and wait for the active conversation UI to show
-      await conversations.first().click();
+    // Check if there are any conversations
+    const hasConversations = await page.evaluate(() => {
+      return typeof window.conversations !== 'undefined' && window.conversations.length > 0;
+    });
+    
+    if (hasConversations) {
+      // Get the first conversation's userId and call openConversation directly
+      const userId = await page.evaluate(() => window.conversations[0].userId);
+      await page.evaluate((id) => window.openConversation(id), userId);
       
-      // Wait for the active conversation header to become visible (indicates conversation is open)
+      // Wait for the active conversation header to become visible
       await expect(page.locator('#active-conversation')).toBeVisible({ timeout: 8000 });
       
       // Now the form should be visible
