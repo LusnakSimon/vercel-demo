@@ -7,13 +7,9 @@ const api = {
     opts.headers['Content-Type'] = opts.headers['Content-Type'] || 'application/json';
     if (opts.body && typeof opts.body !== 'string') opts.body = JSON.stringify(opts.body);
     
-    console.log('[API]', opts.method || 'GET', path, 'credentials:', opts.credentials);
-    
     try {
       const res = await fetch(path, opts);
       const json = await res.json().catch(()=>null);
-      
-      console.log('[API]', path, 'status:', res.status, 'ok:', res.ok);
       
       if (!res.ok) {
         // Enhanced error messages
@@ -66,10 +62,8 @@ window.api = api;
 
 // Theme management
 function toggleTheme() {
-  console.log('[Theme] Toggle clicked');
   const current = document.documentElement.getAttribute('data-theme') || 'dark';
   const next = current === 'dark' ? 'light' : 'dark';
-  console.log('[Theme] Switching from', current, 'to', next);
   document.documentElement.setAttribute('data-theme', next);
   localStorage.setItem('theme', next);
   updateThemeIcon(next);
@@ -191,7 +185,6 @@ async function loadTodosList() {
   
   // If on todos.html page with its own loadTodos function, skip this
   if (typeof loadTodos === 'function' && window.location.pathname.includes('todos.html')) {
-    console.log('[LoadTodosList] Skipping - todos.html has its own loader');
     return;
   }
   
@@ -199,13 +192,10 @@ async function loadTodosList() {
   listEl.innerHTML = '<li class="muted center" style="padding: 40px;"><div class="spinner" style="margin: 0 auto 12px;"></div>Loading todos...</li>';
   
   try {
-    console.log('[LoadTodos] Fetching todos...');
     const response = await api.request('/api/todos');
-    console.log('[LoadTodos] Received response:', response);
     
     // Handle paginated response (new API format) or direct array (old format)
     const todos = Array.isArray(response) ? response : (response.data || []);
-    console.log('[LoadTodos] Parsed todos array:', todos);
     
     listEl.innerHTML = '';
     
@@ -487,7 +477,6 @@ function escapeHtml(s){ if(!s) return ''; return String(s).replace(/[&<>"']/g, c
     if (themeToggle && !themeToggle.dataset.listenerAttached) {
       themeToggle.addEventListener('click', toggleTheme);
       themeToggle.dataset.listenerAttached = 'true';
-      console.log('[Theme] Event listener attached to toggle button');
     }
   }
   
@@ -542,7 +531,7 @@ async function renderAuthActions() {
           notifBadge = '<a href="/notifications.html" class="notification-bell" title="Notifications" style="opacity: 0.5;">🔔</a>';
         }
       } catch (err) {
-        console.log('Could not load notifications:', err);
+        // Silent fail - user may not be logged in
       }
       
       el.innerHTML = `${notifBadge}<span class="muted">Hi, ${escapeHtml(res.user.name||res.user.email)}</span> <button class="btn btn-sm btn-secondary" onclick="signOut()">Sign Out</button>`;
@@ -669,7 +658,7 @@ async function updateNotificationBadge() {
       }
     });
   } catch (err) {
-    console.log('[Notifications] Failed to update badge:', err);
+    // Silent fail - expected for non-logged-in users
   }
 }
 

@@ -14,14 +14,23 @@ module.exports = async (req, res) => {
       // Allow authenticated users to search by email (for inviting to projects)
       if (email) {
         if (!authUser) return res.status(401).json({ error: 'unauthenticated' });
-        const user = await users.findOne({ email: String(email).toLowerCase() }, { projection: { passwordHash: 0 } });
+        // Return only public fields for non-admin users
+        const publicProjection = { _id: 1, name: 1, email: 1 };
+        const user = await users.findOne({ email: String(email).toLowerCase() }, { projection: publicProjection });
         if (!user) return res.status(404).json({ error: 'user not found' });
         return res.status(200).json(user);
       }
       
       // Listing all users: allow for authenticated users (needed for project collaboration)
       if (!authUser) return res.status(401).json({ error: 'unauthenticated' });
-      const list = await users.find({}, { projection: { passwordHash: 0, password: 0 } }).limit(100).toArray();
+      
+      // Admins get full user data (except password), regular users only get public fields
+      const isAdmin = requireRole(authUser, 'admin');
+      const projection = isAdmin 
+        ? { passwordHash: 0, password: 0 } 
+        : { _id: 1, name: 1, email: 1 }; // Public fields only for non-admins
+      
+      const list = await users.find({}, { projection }).limit(100).toArray();
       return res.status(200).json(list);
     }
 

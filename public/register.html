@@ -36,30 +36,33 @@
         <h2>Create Account</h2>
         <p class="muted">Join Research Notebook and start organizing your work</p>
         
-        <form id="register-form" class="stack" style="margin-top: 28px;">
+        <form id="register-form" class="stack" style="margin-top: 28px;" aria-label="Registration form">
           <div>
             <label for="register-name">Full Name</label>
-            <input id="register-name" type="text" placeholder="John Doe" required autofocus />
+            <input id="register-name" type="text" placeholder="John Doe" required autofocus autocomplete="name" aria-required="true" />
           </div>
           <div>
             <label for="register-email">Email Address</label>
-            <input id="register-email" type="email" placeholder="your@email.com" required />
+            <input id="register-email" type="email" placeholder="your@email.com" required autocomplete="email" aria-required="true" />
           </div>
           <div>
             <label for="register-password">Password</label>
             <div style="position: relative;">
-              <input id="register-password" type="password" placeholder="Choose a strong password" required style="padding-right: 40px;" />
+              <input id="register-password" type="password" placeholder="Choose a strong password" required style="padding-right: 40px;" autocomplete="new-password" aria-required="true" aria-describedby="password-requirements" />
               <button 
                 type="button" 
                 id="toggle-password"
                 style="position: absolute; right: 8px; top: 50%; transform: translateY(-50%); background: none; border: none; cursor: pointer; font-size: 18px; padding: 4px 8px; color: var(--text-secondary);"
                 title="Show password"
+                aria-label="Toggle password visibility"
+                aria-pressed="false"
               >
                 👁️
               </button>
             </div>
+            <span id="password-requirements" class="muted small" style="display: block; margin-top: 4px;">Use at least 6 characters</span>
           </div>
-          <button class="btn btn-primary" type="submit">Create Account</button>
+          <button class="btn btn-primary" type="submit" aria-label="Create your account">Create Account</button>
         </form>
 
         <div class="muted small" style="margin-top: 16px;">

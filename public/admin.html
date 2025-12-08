@@ -43,6 +43,24 @@
   </div>
   <script src="/app.js"></script>
   <script>
+    // Check if user is admin before showing admin content
+    async function checkAdminAccess() {
+      try {
+        const me = await api.request('/api/auth/me');
+        if (!me || me.role !== 'admin') {
+          // Not an admin - redirect to dashboard
+          alert('Access denied. Admin privileges required.');
+          window.location.href = '/dashboard.html';
+          return false;
+        }
+        return true;
+      } catch (e) {
+        // Not logged in or error
+        window.location.href = '/login.html';
+        return false;
+      }
+    }
+    
     async function loadUsers(){
       try{ 
         const users = await api.request('/api/users'); 
@@ -51,15 +69,22 @@
         users.forEach(u=>{ 
           const d=document.createElement('div'); 
           d.className='list-item'; 
-          d.innerHTML=`<div>${u.email}</div><div class="small muted">${u.name||''} (${u.role||'user'})</div>`; 
+          d.innerHTML=`<div>${escapeHtml(u.email)}</div><div class="small muted">${escapeHtml(u.name||'')} (${escapeHtml(u.role||'user')})</div>`; 
           el.appendChild(d); 
         }); 
       }catch(e){ 
         document.getElementById('users-list').innerHTML='Unable to load users (admin only)'; 
       }
     }
-    renderAuthActions();
-    loadUsers();
+    
+    // Check admin access before loading page
+    (async () => {
+      const isAdmin = await checkAdminAccess();
+      if (isAdmin) {
+        renderAuthActions();
+        loadUsers();
+      }
+    })();
   </script>
   
   <footer class="footer">

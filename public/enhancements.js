@@ -1092,8 +1092,6 @@
         showShortcutsHelp();
       });
     }
-
-    console.log('🚀 UI Enhancements loaded!');
   }
 
   init();

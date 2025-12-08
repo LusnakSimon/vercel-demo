@@ -36,26 +36,30 @@
         <h2>Welcome Back</h2>
         <p class="muted">Sign in to your account to continue</p>
         
-        <form id="login-form" class="stack" style="margin-top: 28px;">
+        <form id="login-form" class="stack" style="margin-top: 28px;" aria-label="Sign in form">
           <div>
             <label for="login-email">Email Address</label>
-            <input id="login-email" type="email" placeholder="your@email.com" required autofocus />
+            <input id="login-email" type="email" placeholder="your@email.com" required autofocus autocomplete="email" aria-describedby="login-email-hint" />
+            <span id="login-email-hint" class="sr-only">Enter the email address associated with your account</span>
           </div>
           <div>
             <label for="login-password">Password</label>
             <div style="position: relative;">
-              <input id="login-password" type="password" placeholder="Enter your password" required style="padding-right: 40px;" />
+              <input id="login-password" type="password" placeholder="Enter your password" required style="padding-right: 40px;" autocomplete="current-password" aria-describedby="login-password-hint" />
+              <span id="login-password-hint" class="sr-only">Enter your account password</span>
               <button 
                 type="button" 
                 id="toggle-password"
                 style="position: absolute; right: 8px; top: 50%; transform: translateY(-50%); background: none; border: none; cursor: pointer; font-size: 18px; padding: 4px 8px; color: var(--text-secondary);"
                 title="Show password"
+                aria-label="Toggle password visibility"
+                aria-pressed="false"
               >
                 👁️
               </button>
             </div>
           </div>
-          <button class="btn btn-primary" type="submit">Sign In</button>
+          <button class="btn btn-primary" type="submit" aria-label="Sign in to your account">Sign In</button>
         </form>
 
         <div class="muted center" style="margin-top: 24px; padding-top: 24px; border-top: 1px solid var(--border);">

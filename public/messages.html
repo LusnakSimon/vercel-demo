@@ -15,25 +15,26 @@
   <script src="/enhancements.js" defer></script>
 </head>
 <body>
-  <div class="container">
+  <a href="#main-content" class="skip-link">Skip to main content</a>
+  <main class="container" id="main-content" role="main">
     <header class="site-header">
       <div class="brand">
-        <div class="logo">RN</div>
+        <div class="logo" aria-hidden="true">RN</div>
         <div>
           <h1>Messages</h1>
           <p class="lead">Your private conversations</p>
         </div>
       </div>
-      <nav class="nav">
+      <nav class="nav" aria-label="Main navigation">
         <a href="/dashboard.html">Dashboard</a>
         <a href="/projects.html">Projects</a>
         <a href="/todos.html">Todos</a>
         <a href="/notes.html">Notes</a>
         <a href="/contacts.html">Contacts</a>
-        <a href="/messages.html">Messages</a>
-        <button id="theme-toggle" title="Toggle theme">🌙</button>
-        <button id="help-toggle" title="Keyboard shortcuts (or press ?)">❓</button>
-        <span id="auth-actions"></span>
+        <a href="/messages.html" aria-current="page">Messages</a>
+        <button id="theme-toggle" title="Toggle theme" aria-label="Toggle dark/light theme">🌙</button>
+        <button id="help-toggle" title="Keyboard shortcuts (or press ?)" aria-label="Show keyboard shortcuts help">❓</button>
+        <span id="auth-actions" role="status" aria-live="polite"></span>
       </nav>
     </header>
 
@@ -349,6 +350,7 @@
       }
     }
   </style>
+  </main>
   
   <footer class="footer">
     <p>Research Notebook - Organize your research effectively</p>
