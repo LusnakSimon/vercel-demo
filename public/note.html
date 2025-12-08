@@ -355,9 +355,17 @@
         document.getElementById('note-title-input').value = n.title || '';
         document.getElementById('note-body').value = n.bodyMarkdown || '';
         document.getElementById('note-body').dispatchEvent(new Event('input'));
-        // show meta
+        // show meta - look up author name
         const meta = document.getElementById('note-meta-info');
-        meta.textContent = 'Author: ' + (n.authorId || '-') + ' · Created: ' + (n.createdAt? new Date(n.createdAt).toLocaleString() : '-') + (n.updatedAt?(' · Updated: '+new Date(n.updatedAt).toLocaleString()):'');
+        let authorName = n.authorId || '-';
+        if (n.authorId) {
+          try {
+            const users = await api.request('/api/users');
+            const author = users.find(u => String(u._id) === String(n.authorId));
+            if (author) authorName = author.name || author.email || authorName;
+          } catch (e) { /* ignore, use authorId */ }
+        }
+        meta.textContent = 'Author: ' + authorName + ' · Created: ' + (n.createdAt? new Date(n.createdAt).toLocaleString() : '-') + (n.updatedAt?(' · Updated: '+new Date(n.updatedAt).toLocaleString()):'');
         
         // show export button
         const exportBtn = document.getElementById('export-note');

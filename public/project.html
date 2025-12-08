@@ -301,7 +301,8 @@
       list.innerHTML = '<div class="muted center" style="padding: 30px;"><div class="spinner" style="margin: 0 auto 12px;"></div>Loading...</div>';
       
       try {
-        const todos = await api.request('/api/todos?projectId=' + encodeURIComponent(projectId));
+        const response = await api.request('/api/todos?projectId=' + encodeURIComponent(projectId));
+        const todos = response.data || response;
         
         if (!todos || todos.length === 0) {
           list.innerHTML = `

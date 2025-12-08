@@ -24,8 +24,20 @@ module.exports = async (req, res) => {
       }
       
       // List todos - filter by current user's ownership with pagination
-      const q = { ownerId: String(authUser._id) };
-      if (projectId) q.projectId = projectId;
+      // If projectId is provided and user is a project member, show all project todos
+      let q = { ownerId: String(authUser._id) };
+      
+      if (projectId) {
+        const { isProjectMember } = require('../lib/auth');
+        const isMember = await isProjectMember(authUser, projectId);
+        if (isMember || authUser.role === 'admin') {
+          // Show all todos for this project (from any member)
+          q = { projectId: String(projectId) };
+        } else {
+          // Not a member, only show own todos for this project
+          q.projectId = String(projectId);
+        }
+      }
       
       const pageNum = Math.max(1, parseInt(page, 10));
       const pageSize = Math.min(100, Math.max(1, parseInt(limit, 10))); // Max 100 per page
