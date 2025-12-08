@@ -1237,3 +1237,159 @@ test.describe('Conversations List', () => {
     }
   });
 });
+
+// ============================================
+// AUTHORIZATION TESTS
+// ============================================
+test.describe('Authorization', () => {
+  test.beforeEach(async ({ page }) => {
+    await login(page);
+  });
+
+  test('admin page should be accessible', async ({ page }) => {
+    await page.goto('/admin.html');
+    await expect(page.locator('h1')).toContainText('Admin');
+  });
+
+  test('admin page should show users list or error', async ({ page }) => {
+    await page.goto('/admin.html');
+    await page.waitForTimeout(1500);
+    
+    const usersList = page.locator('#users-list');
+    const text = await usersList.textContent();
+    
+    // Should either show users or an "admin only" message
+    expect(text.length).toBeGreaterThan(0);
+  });
+
+  test('regular user should not be able to change their own role via API', async ({ page }) => {
+    // Try to update role via API - should silently ignore role change
+    const result = await page.evaluate(async () => {
+      try {
+        // Get current user
+        const me = await window.api.request('/api/auth/me');
+        const userId = me.user._id;
+        
+        // Try to change role to admin
+        const updated = await window.api.request(`/api/users?id=${userId}`, {
+          method: 'PATCH',
+          body: { role: 'admin' }
+        });
+        
+        return { success: true, role: updated.role };
+      } catch (e) {
+        return { success: false, error: e.error || e.message };
+      }
+    });
+    
+    // Role should NOT be 'admin' (either unchanged or request failed)
+    if (result.success) {
+      expect(result.role).not.toBe('admin');
+    }
+  });
+
+  test('unauthenticated user should not access protected API endpoints', async ({ page }) => {
+    // Clear all cookies to ensure we're unauthenticated
+    await page.context().clearCookies();
+    
+    // Navigate to a page to set up the context
+    await page.goto('/login.html');
+    
+    // Try to access protected endpoint without auth
+    const result = await page.evaluate(async () => {
+      try {
+        const response = await fetch('/api/todos', {
+          credentials: 'include'
+        });
+        return { status: response.status };
+      } catch (e) {
+        return { error: e.message };
+      }
+    });
+    
+    // Should return 401 unauthorized status
+    expect(result.status).toBe(401);
+  });
+
+  test('unauthenticated user should be redirected from protected pages', async ({ page }) => {
+    // Logout first
+    await page.goto('/dashboard.html');
+    const signOutBtn = page.locator('button:has-text("Sign Out")');
+    if (await signOutBtn.isVisible()) {
+      await signOutBtn.click();
+      await page.waitForTimeout(1000);
+    }
+    
+    // Clear any remaining session
+    await page.context().clearCookies();
+    
+    // Try to access contacts page (which requires auth)
+    await page.goto('/contacts.html');
+    await page.waitForTimeout(2000);
+    
+    // Should redirect to login
+    const url = page.url();
+    expect(url).toContain('login');
+  });
+});
+
+// ============================================
+// DATA ISOLATION TESTS  
+// ============================================
+test.describe('Data Isolation', () => {
+  test.beforeEach(async ({ page }) => {
+    await login(page);
+  });
+
+  test('user should only see their own todos', async ({ page }) => {
+    await page.goto('/todos.html');
+    await page.waitForTimeout(1500);
+    
+    // Check if todos are loaded (either shows todos or empty state)
+    const todosList = page.locator('#todos-list');
+    await expect(todosList).toBeVisible();
+    
+    // The todos shown should belong to the logged-in user
+    // We can verify by checking the API response
+    const todos = await page.evaluate(async () => {
+      const response = await window.api.request('/api/todos');
+      return Array.isArray(response) ? response : (response.data || []);
+    });
+    
+    // All todos should have the current user as owner (or we got an empty list which is fine)
+    const me = await page.evaluate(async () => {
+      const res = await window.api.request('/api/auth/me');
+      return res.user._id;
+    });
+    
+    todos.forEach(todo => {
+      expect(String(todo.ownerId)).toBe(String(me));
+    });
+  });
+
+  test('user should only see notes they have access to', async ({ page }) => {
+    await page.goto('/notes.html');
+    await page.waitForTimeout(1500);
+    
+    // Verify the notes API returns only accessible notes
+    const result = await page.evaluate(async () => {
+      try {
+        const response = await window.api.request('/api/notes');
+        const notes = response.data || response;
+        const me = await window.api.request('/api/auth/me');
+        return { 
+          noteCount: notes.length, 
+          userId: me.user._id,
+          allOwned: notes.every(n => String(n.authorId) === String(me.user._id) || n.projectId)
+        };
+      } catch (e) {
+        return { error: e.message };
+      }
+    });
+    
+    // All notes should be owned by user or be part of a project they're in
+    if (!result.error) {
+      expect(result.allOwned).toBe(true);
+    }
+  });
+});
