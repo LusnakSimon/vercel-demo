@@ -80,6 +80,248 @@
   outline-offset: 2px;
 }
 
+/* ============================================
+   UTILITY CLASSES
+   ============================================ */
+
+/* Empty state icon styling */
+.empty-icon {
+  font-size: 48px;
+  margin-bottom: 12px;
+  opacity: 0.3;
+}
+
+.empty-icon-lg {
+  font-size: 64px;
+  margin-bottom: 16px;
+  opacity: 0.3;
+}
+
+.empty-icon-sm {
+  font-size: 32px;
+  margin-bottom: 8px;
+  opacity: 0.3;
+}
+
+/* Empty state container */
+.empty-state {
+  text-align: center;
+  padding: 40px 20px;
+  color: var(--text-secondary);
+}
+
+.empty-state h3 {
+  margin: 0 0 8px 0;
+  color: var(--text-primary);
+}
+
+.empty-state p {
+  margin: 0;
+  color: var(--text-secondary);
+}
+
+/* Flexbox utilities */
+.flex {
+  display: flex;
+}
+
+.flex-col {
+  display: flex;
+  flex-direction: column;
+}
+
+.flex-center {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.flex-between {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.flex-wrap {
+  flex-wrap: wrap;
+}
+
+.gap-sm {
+  gap: 8px;
+}
+
+.gap-md {
+  gap: 12px;
+}
+
+.gap-lg {
+  gap: 20px;
+}
+
+/* Spacing utilities */
+.mt-sm { margin-top: 8px; }
+.mt-md { margin-top: 16px; }
+.mt-lg { margin-top: 24px; }
+.mt-xl { margin-top: 32px; }
+
+.mb-sm { margin-bottom: 8px; }
+.mb-md { margin-bottom: 16px; }
+.mb-lg { margin-bottom: 24px; }
+.mb-xl { margin-bottom: 32px; }
+
+.pt-lg { padding-top: 24px; }
+.pb-md { padding-bottom: 16px; }
+
+/* Border utilities */
+.border-top {
+  border-top: 1px solid var(--border);
+}
+
+.border-bottom {
+  border-bottom: 1px solid var(--border);
+}
+
+/* Password toggle button */
+.password-toggle {
+  position: absolute;
+  right: 8px;
+  top: 50%;
+  transform: translateY(-50%);
+  background: none;
+  border: none;
+  cursor: pointer;
+  font-size: 18px;
+  padding: 4px 8px;
+  color: var(--text-secondary);
+}
+
+.password-toggle:hover {
+  color: var(--text-primary);
+}
+
+/* Form section divider */
+.form-divider {
+  margin-top: 24px;
+  padding-top: 24px;
+  border-top: 1px solid var(--border);
+}
+
+/* Link styles */
+.link-accent {
+  color: var(--accent);
+  text-decoration: none;
+}
+
+.link-accent:hover {
+  text-decoration: underline;
+}
+
+/* Error display */
+.error-container {
+  text-align: center;
+  padding: 40px 20px;
+}
+
+.error-icon {
+  font-size: 48px;
+  margin-bottom: 16px;
+}
+
+.error-message {
+  color: var(--text-primary);
+  margin-bottom: 8px;
+}
+
+.error-details {
+  font-size: 11px;
+  margin-top: 12px;
+  color: var(--text-secondary);
+  max-width: 400px;
+  word-break: break-word;
+  margin-left: auto;
+  margin-right: auto;
+}
+
+/* Messages layout */
+.messages-grid {
+  display: grid;
+  grid-template-columns: 300px 1fr;
+  gap: 20px;
+  min-height: 600px;
+}
+
+@media (max-width: 768px) {
+  .messages-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+.messages-panel {
+  display: flex;
+  flex-direction: column;
+  height: 600px;
+}
+
+/* Conversation header */
+.conversation-header {
+  border-bottom: 1px solid var(--border);
+  padding-bottom: 12px;
+  margin-bottom: 16px;
+}
+
+/* User avatar */
+.user-avatar {
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, var(--accent), var(--accent-dark));
+  color: white;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 600;
+  flex-shrink: 0;
+}
+
+.user-avatar-sm {
+  width: 32px;
+  height: 32px;
+  font-size: 14px;
+}
+
+.user-avatar-lg {
+  width: 48px;
+  height: 48px;
+  font-size: 20px;
+}
+
+/* Messages container */
+.messages-container {
+  flex: 1;
+  overflow-y: auto;
+  padding: 16px;
+  background: var(--surface);
+  border-radius: 8px;
+  margin-bottom: 16px;
+  border: 1px solid var(--border);
+}
+
+/* Message form */
+.message-form {
+  display: flex;
+  gap: 12px;
+  align-items: center;
+}
+
+/* Input with icon */
+.input-with-icon {
+  position: relative;
+}
+
+.input-with-icon input {
+  padding-right: 40px;
+}
+
 body {
   font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
   background: linear-gradient(135deg, var(--bg-primary) 0%, #0d1425 50%, var(--bg-primary) 100%);

@@ -145,8 +145,8 @@
           list.appendChild(card);
         });
       } catch (err) {
-        const errorMsg = err.userMessage || 'Unable to load notes';
-        list.innerHTML = `<div class="muted center" style="padding: 40px;">${escapeHtml(errorMsg)}</div>`;
+        handleError(err, 'Unable to load notes');
+        renderErrorState(list, 'Unable to load notes', 'Please try refreshing the page');
       }
     }
 

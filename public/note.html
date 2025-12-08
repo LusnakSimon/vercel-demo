@@ -559,25 +559,9 @@
           });
         });
       } catch (err) {
-        console.error('Failed to load templates:', err);
-        console.error('Error details:', { 
-          message: err.error, 
-          userMessage: err.userMessage,
-          status: err.status,
-          details: err.details 
-        });
         const errorMsg = err.userMessage || err.error || 'Failed to load templates';
-        const errorDetails = err.details ? `<div style="font-size: 11px; margin-top: 12px; color: var(--text-secondary); max-width: 400px; word-break: break-word;">${escapeHtml(err.details)}</div>` : '';
-        listEl.innerHTML = `
-          <div class="muted center" style="padding: 40px;">
-            <div style="font-size: 48px; margin-bottom: 16px;">😕</div>
-            <div>${escapeHtml(errorMsg)}</div>
-            <div style="font-size: 13px; margin-top: 8px;">
-              ${err.status === 401 ? 'Please try signing out and back in.' : 'Please try again later.'}
-            </div>
-            ${errorDetails}
-          </div>
-        `;
+        const hint = err.status === 401 ? 'Please try signing out and back in.' : 'Please try again later.';
+        renderErrorState(listEl, errorMsg, hint);
       }
     }
     

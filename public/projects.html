@@ -119,8 +119,8 @@
           list.appendChild(li);
         });
       } catch (err) {
-        const errorMsg = err.userMessage || 'Unable to load projects';
-        list.innerHTML = `<li class="muted center" style="padding: 40px;">${escapeHtml(errorMsg)}</li>`;
+        handleError(err, 'Unable to load projects');
+        list.innerHTML = `<li class="empty-state"><div class="error-icon">😕</div><div>Unable to load projects</div></li>`;
       }
     }
 

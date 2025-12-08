@@ -101,9 +101,86 @@ function showToast(message, type = 'info', timeout = 2500) {
     el = document.createElement('div'); el.id = id; el.className = 'toast ' + (type||'info'); el.textContent = message;
     document.body.appendChild(el);
     setTimeout(()=>{ el && el.remove(); }, timeout);
-  } catch(e) { console.warn('toast failed', e); }
+  } catch(e) { /* silent fail */ }
 }
 window.showToast = showToast;
+
+// Standardized error handler - use this for consistent error handling across pages
+function handleError(err, context = '') {
+  // Extract user-friendly message
+  let message = 'An unexpected error occurred';
+  
+  if (err) {
+    if (err.userMessage) {
+      message = err.userMessage;
+    } else if (err.message) {
+      message = err.message;
+    } else if (err.error) {
+      // Map common API error codes to user-friendly messages
+      const errorMap = {
+        'unauthenticated': 'Please sign in to continue',
+        'forbidden': 'You don\'t have permission to do that',
+        'not found': 'The requested item was not found',
+        'invalid credentials': 'Invalid email or password',
+        'email and password required': 'Please enter your email and password',
+        'user not found': 'No user found with that email',
+        'already in contacts': 'This user is already in your contacts',
+        'request already exists': 'A contact request already exists',
+        'internal': 'Server error - please try again later'
+      };
+      message = errorMap[err.error] || err.error;
+    } else if (typeof err === 'string') {
+      message = err;
+    }
+  }
+  
+  // Add context if provided
+  if (context) {
+    message = `${context}: ${message}`;
+  }
+  
+  // Show toast notification
+  showToast(message, 'error', 4000);
+  
+  // Return the message for any additional handling
+  return message;
+}
+window.handleError = handleError;
+
+// Render an empty state in a container element
+function renderEmptyState(container, icon, title, subtitle = '', actionHtml = '') {
+  if (typeof container === 'string') {
+    container = document.getElementById(container) || document.querySelector(container);
+  }
+  if (!container) return;
+  
+  container.innerHTML = `
+    <div class="empty-state">
+      <div class="empty-icon-lg">${escapeHtml(icon)}</div>
+      <h3>${escapeHtml(title)}</h3>
+      ${subtitle ? `<p>${escapeHtml(subtitle)}</p>` : ''}
+      ${actionHtml}
+    </div>
+  `;
+}
+window.renderEmptyState = renderEmptyState;
+
+// Render an error state in a container element
+function renderErrorState(container, message, details = '') {
+  if (typeof container === 'string') {
+    container = document.getElementById(container) || document.querySelector(container);
+  }
+  if (!container) return;
+  
+  container.innerHTML = `
+    <div class="error-container">
+      <div class="error-icon">😕</div>
+      <div class="error-message">${escapeHtml(message)}</div>
+      ${details ? `<div class="error-details">${escapeHtml(details)}</div>` : ''}
+    </div>
+  `;
+}
+window.renderErrorState = renderErrorState;
 
 async function loginFormHandler(ev) {
   ev && ev.preventDefault();

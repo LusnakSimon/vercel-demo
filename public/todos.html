@@ -337,12 +337,10 @@
           allTodos = [];
         }
         
-        console.log('[LoadTodos] allTodos populated with', allTodos.length, 'items');
         filterTodos();
       } catch(err) {
-        console.error('[LoadTodos] Error:', err);
-        const errorMsg = err.userMessage || 'Unable to load todos';
-        list.innerHTML = `<li class="muted center" style="padding: 40px;">${escapeHtml(errorMsg)}</li>`;
+        const errorMsg = handleError(err, 'Unable to load todos');
+        list.innerHTML = `<li class="empty-state"><div class="error-icon">😕</div><div>${escapeHtml(errorMsg)}</div></li>`;
       }
     }
     
