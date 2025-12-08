@@ -166,6 +166,60 @@
     </div>
   </div>
 
+  <!-- Create Note Modal -->
+  <div id="note-modal" class="modal-overlay hidden" style="display: none;">
+    <div class="modal" style="max-width: 600px;">
+      <h3>📝 Create Project Note</h3>
+      <form id="note-form" class="stack">
+        <div>
+          <label for="note-title">Title</label>
+          <input id="note-title" type="text" placeholder="Note title" required />
+        </div>
+        <div>
+          <label for="note-body">Content (Markdown supported)</label>
+          <textarea id="note-body" rows="8" placeholder="Write your note here..."></textarea>
+        </div>
+        <div>
+          <label for="note-tags">Tags (comma-separated)</label>
+          <input id="note-tags" type="text" placeholder="research, draft, important" />
+        </div>
+        <div style="display: flex; gap: 8px; justify-content: flex-end;">
+          <button type="button" class="btn btn-secondary" onclick="closeModal('note-modal')">Cancel</button>
+          <button type="submit" class="btn btn-primary">Create Note</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- Create Todo Modal -->
+  <div id="todo-modal" class="modal-overlay hidden" style="display: none;">
+    <div class="modal" style="max-width: 500px;">
+      <h3>✅ Create Project Todo</h3>
+      <form id="todo-form" class="stack">
+        <div>
+          <label for="todo-title">Task</label>
+          <input id="todo-title" type="text" placeholder="What needs to be done?" required />
+        </div>
+        <div>
+          <label for="todo-description">Description (optional)</label>
+          <textarea id="todo-description" rows="3" placeholder="Additional details..."></textarea>
+        </div>
+        <div>
+          <label for="todo-dueDate">Due Date (optional)</label>
+          <input id="todo-dueDate" type="date" />
+        </div>
+        <div>
+          <label for="todo-tags">Tags (comma-separated)</label>
+          <input id="todo-tags" type="text" placeholder="priority, backend, review" />
+        </div>
+        <div style="display: flex; gap: 8px; justify-content: flex-end;">
+          <button type="button" class="btn btn-secondary" onclick="closeModal('todo-modal')">Cancel</button>
+          <button type="submit" class="btn btn-primary">Create Todo</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
   <script src="/app.js"></script>
   <script>
     const urlParams = new URLSearchParams(window.location.search);
@@ -581,11 +635,72 @@
     
     document.getElementById('create-note-btn').addEventListener('click', (e) => {
       e.preventDefault();
-      window.location.href = '/note.html?projectId=' + encodeURIComponent(projectId);
+      openModal('note-modal');
     });
     
     document.getElementById('create-todo-btn').addEventListener('click', () => {
-      window.location.href = '/todos.html?projectId=' + encodeURIComponent(projectId);
+      openModal('todo-modal');
+    });
+    
+    // Note form submission
+    document.getElementById('note-form').addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const btn = e.target.querySelector('button[type=submit]');
+      btn.disabled = true;
+      btn.textContent = 'Creating...';
+      
+      try {
+        const title = document.getElementById('note-title').value.trim();
+        const bodyMarkdown = document.getElementById('note-body').value;
+        const tagsStr = document.getElementById('note-tags').value.trim();
+        const tags = tagsStr ? tagsStr.split(',').map(t => t.trim()).filter(t => t) : [];
+        
+        await api.request('/api/notes', {
+          method: 'POST',
+          body: { title, bodyMarkdown, projectId, tags }
+        });
+        
+        showToast('Note created!', 'success', 2000);
+        closeModal('note-modal');
+        document.getElementById('note-form').reset();
+        await loadNotes();
+      } catch (err) {
+        showToast(err.userMessage || 'Failed to create note', 'error', 3000);
+      } finally {
+        btn.disabled = false;
+        btn.textContent = 'Create Note';
+      }
+    });
+    
+    // Todo form submission
+    document.getElementById('todo-form').addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const btn = e.target.querySelector('button[type=submit]');
+      btn.disabled = true;
+      btn.textContent = 'Creating...';
+      
+      try {
+        const title = document.getElementById('todo-title').value.trim();
+        const description = document.getElementById('todo-description').value.trim();
+        const dueDate = document.getElementById('todo-dueDate').value || null;
+        const tagsStr = document.getElementById('todo-tags').value.trim();
+        const tags = tagsStr ? tagsStr.split(',').map(t => t.trim()).filter(t => t) : [];
+        
+        await api.request('/api/todos', {
+          method: 'POST',
+          body: { title, description, projectId, dueDate, tags }
+        });
+        
+        showToast('Todo created!', 'success', 2000);
+        closeModal('todo-modal');
+        document.getElementById('todo-form').reset();
+        await loadTodos();
+      } catch (err) {
+        showToast(err.userMessage || 'Failed to create todo', 'error', 3000);
+      } finally {
+        btn.disabled = false;
+        btn.textContent = 'Create Todo';
+      }
     });
     
     document.getElementById('chat-form').addEventListener('submit', sendMessage);
