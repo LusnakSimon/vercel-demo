@@ -2,6 +2,12 @@
 
 A collaborative note-taking and todo application with real-time updates, built on serverless architecture.
 
+## Documentation
+
+- 📖 **[User Guide](docs/USER_GUIDE.md)** - Complete guide to using the application
+- 🔧 **[API Documentation](docs/API.md)** - Full API reference for developers
+- 🚀 **[Build & Run](BUILD_AND_RUN.md)** - Setup and deployment instructions
+
 ## Features
 
 ### Core Features
@@ -305,7 +311,28 @@ Trade-offs:
 
 ## Recent Updates
 
-### v3.0 (Latest - October 2025)
+### v3.1 (Latest - January 2025)
+- ✅ **Security Enhancements**:
+  - Rate limiting on login endpoint (5 attempts per 15-minute window)
+  - Restricted `/api/users` endpoint (non-admins see limited fields)
+  - Admin page protection (redirects non-admin users)
+  - Server-side input sanitization (`sanitizeHtml`, `sanitizeInput`, `sanitizeObject`)
+- ✅ **Accessibility Improvements**:
+  - Skip navigation links on all pages
+  - ARIA labels for all interactive elements
+  - Screen reader-only text for icons
+  - Improved form labeling and error announcements
+- ✅ **Code Quality**:
+  - 25+ CSS utility classes for consistent styling
+  - Standardized error handling with `handleError()`, `renderEmptyState()`, `renderErrorState()`
+  - Removed debug console.logs for production cleanliness
+  - Consolidated inline styles to CSS classes
+- ✅ **Visual Regression Testing**:
+  - Playwright screenshot comparison tests
+  - Tests for dark, light, and high-contrast themes
+  - Coverage for login, dashboard, todos, and notes pages
+
+### v3.0 (October 2025)
 - ✅ **Major UI/UX Overhaul**:
   - Sticky navigation with active page highlighting
   - Command palette (Cmd/Ctrl+K) for quick navigation
@@ -352,6 +379,10 @@ Trade-offs:
 - [x] Profile management
 - [x] Password change functionality
 - [x] Auto-logout on session expiry
+- [x] Rate limiting on login (5 attempts/15 min)
+- [x] Restricted API endpoints (role-based field visibility)
+- [x] Server-side input sanitization (XSS prevention)
+- [x] Admin page access control
 
 ### Core Functionality ✅
 - [x] Create, read, update, delete (CRUD) for:
@@ -392,6 +423,9 @@ Trade-offs:
 - [x] High contrast mode
 - [x] Semantic HTML
 - [x] ARIA labels where appropriate
+- [x] Skip navigation links
+- [x] Screen reader-only helper text
+- [x] Form error announcements
 
 ### Performance ✅
 - [x] Database indexes for fast queries
@@ -417,6 +451,9 @@ Trade-offs:
 - [x] Comprehensive API documentation
 - [x] Error handling throughout
 - [x] Console logging for debugging
+- [x] CSS utility classes for consistent styling
+- [x] Standardized error/empty state helpers
+- [x] Playwright visual regression tests
 
 ### Mobile Experience ✅
 - [x] Responsive breakpoints (768px, 480px)
@@ -438,6 +475,43 @@ Trade-offs:
 - [x] XSS protection (escapeHtml)
 - [x] Proper HTTP status codes
 - [x] Graceful error messages
+
+### Testing ✅
+- [x] Playwright end-to-end tests (267+ tests)
+- [x] Visual regression tests with screenshot comparison
+- [x] Multi-theme testing (dark, light, high-contrast)
+- [x] Authentication flow testing
+- [x] CRUD operation testing
+- [x] Error state testing
+
+## Testing
+
+### Running Tests
+
+```bash
+# Run all functional tests
+npx playwright test
+
+# Run visual regression tests
+npx playwright test tests/visual-regression.spec.js
+
+# Update visual regression baselines
+npx playwright test tests/visual-regression.spec.js --update-snapshots
+
+# Run tests with UI
+npx playwright test --ui
+```
+
+### Test Coverage
+
+| Category | Tests | Description |
+|----------|-------|-------------|
+| Authentication | 30+ | Login, logout, registration, password change |
+| Notes | 50+ | CRUD, search, filtering, visibility |
+| Todos | 40+ | CRUD, status, due dates, tags |
+| Projects | 30+ | CRUD, membership, authorization |
+| UI/UX | 50+ | Navigation, themes, responsive design |
+| Visual Regression | 12 | Screenshot comparison across themes |
 
 ## License
 
