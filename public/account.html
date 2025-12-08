@@ -4,7 +4,15 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width,initial-scale=1">
   <title>Account - Research Notebook</title>
+  <script>
+    // Apply theme immediately to prevent flash
+    (function() {
+      const theme = localStorage.getItem('theme') || 'dark';
+      document.documentElement.setAttribute('data-theme', theme);
+    })();
+  </script>
   <link rel="stylesheet" href="/styles.css">
+  <script src="/enhancements.js" defer></script>
 </head>
 <body>
   <div class="container">
@@ -17,10 +25,14 @@
         </div>
       </div>
       <nav class="nav">
-        <a href="/">Home</a>
         <a href="/dashboard.html">Dashboard</a>
+        <a href="/projects.html">Projects</a>
         <a href="/todos.html">Todos</a>
+        <a href="/notes.html">Notes</a>
+        <a href="/contacts.html">Contacts</a>
+        <a href="/messages.html">Messages</a>
         <button id="theme-toggle" title="Toggle theme">🌙</button>
+        <button id="help-toggle" title="Keyboard shortcuts (or press ?)">❓</button>
         <span id="auth-actions"></span>
       </nav>
     </header>

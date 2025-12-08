@@ -3,15 +3,39 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width,initial-scale=1">
-  <title>Admin</title>
+  <title>Admin - Research Notebook</title>
+  <script>
+    // Apply theme immediately to prevent flash
+    (function() {
+      const theme = localStorage.getItem('theme') || 'dark';
+      document.documentElement.setAttribute('data-theme', theme);
+    })();
+  </script>
   <link rel="stylesheet" href="/styles.css">
+  <script src="/enhancements.js" defer></script>
 </head>
 <body>
   <div class="container">
-      <div class="header">
-      <div class="brand"><h1>Admin</h1></div>
-      <nav class="nav"><a href="/dashboard.html">Dashboard</a><a href="/projects.html">Projects</a> <span id="auth-actions"></span></nav>
-    </div>
+    <header class="site-header">
+      <div class="brand">
+        <div class="logo">RN</div>
+        <div>
+          <h1>Admin Panel</h1>
+          <p class="lead">Manage users and system</p>
+        </div>
+      </div>
+      <nav class="nav">
+        <a href="/dashboard.html">Dashboard</a>
+        <a href="/projects.html">Projects</a>
+        <a href="/todos.html">Todos</a>
+        <a href="/notes.html">Notes</a>
+        <a href="/contacts.html">Contacts</a>
+        <a href="/messages.html">Messages</a>
+        <button id="theme-toggle" title="Toggle theme">🌙</button>
+        <button id="help-toggle" title="Keyboard shortcuts (or press ?)">❓</button>
+        <span id="auth-actions"></span>
+      </nav>
+    </header>
     <div class="card">
       <h2>Users</h2>
       <div id="users-list" class="list muted">Loading…</div>
@@ -20,8 +44,21 @@
   <script src="/app.js"></script>
   <script>
     async function loadUsers(){
-      try{ const users = await api.request('/api/users'); const el=document.getElementById('users-list'); el.innerHTML=''; users.forEach(u=>{ const d=document.createElement('div'); d.className='list-item'; d.innerHTML=`<div>${u.email}</div><div class="small muted">${u.name||''} (${u.role||'user'})</div>`; el.appendChild(d); }); }catch(e){ document.getElementById('users-list').innerHTML='Unable to load users (admin only)'; }
+      try{ 
+        const users = await api.request('/api/users'); 
+        const el=document.getElementById('users-list'); 
+        el.innerHTML=''; 
+        users.forEach(u=>{ 
+          const d=document.createElement('div'); 
+          d.className='list-item'; 
+          d.innerHTML=`<div>${u.email}</div><div class="small muted">${u.name||''} (${u.role||'user'})</div>`; 
+          el.appendChild(d); 
+        }); 
+      }catch(e){ 
+        document.getElementById('users-list').innerHTML='Unable to load users (admin only)'; 
+      }
     }
+    renderAuthActions();
     loadUsers();
   </script>
 </body>

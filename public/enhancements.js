@@ -133,30 +133,38 @@
       if (e.shiftKey && e.key === 'T') {
         e.preventDefault();
         if (window.toggleTheme) window.toggleTheme();
+        return;
       }
       
-      // New note (N)
-      if (e.key === 'n' || e.key === 'N') {
-        e.preventDefault();
-        window.location.href = '/note.html';
-      }
-      
-      // New todo (T)
-      if (e.key === 't' || e.key === 'T') {
-        e.preventDefault();
-        window.location.href = '/todos.html';
-      }
-      
-      // Go to dashboard (D)
-      if (e.key === 'd' || e.key === 'D') {
-        e.preventDefault();
-        window.location.href = '/dashboard.html';
-      }
-      
-      // Go to projects (P)
-      if (e.key === 'p' || e.key === 'P') {
-        e.preventDefault();
-        window.location.href = '/projects.html';
+      // Go-to shortcuts require Alt key to avoid accidental navigation
+      if (e.altKey) {
+        // New note (Alt + N)
+        if (e.key === 'n' || e.key === 'N') {
+          e.preventDefault();
+          window.location.href = '/note.html';
+          return;
+        }
+        
+        // New todo (Alt + T)
+        if (e.key === 't' || e.key === 'T') {
+          e.preventDefault();
+          window.location.href = '/todos.html';
+          return;
+        }
+        
+        // Go to dashboard (Alt + D)
+        if (e.key === 'd' || e.key === 'D') {
+          e.preventDefault();
+          window.location.href = '/dashboard.html';
+          return;
+        }
+        
+        // Go to projects (Alt + P)
+        if (e.key === 'p' || e.key === 'P') {
+          e.preventDefault();
+          window.location.href = '/projects.html';
+          return;
+        }
       }
       
       // Show shortcuts help (?)
@@ -693,7 +701,7 @@
               <strong>New Note</strong>
               <div class="muted small">Create a new note</div>
             </div>
-            <kbd>N</kbd>
+            <kbd>Alt+N</kbd>
           </div>
           
           <div style="display: grid; grid-template-columns: 1fr auto; gap: 16px; padding: 12px; background: var(--bg-secondary); border-radius: 8px;">
@@ -701,7 +709,7 @@
               <strong>New Todo</strong>
               <div class="muted small">Create a new todo</div>
             </div>
-            <kbd>T</kbd>
+            <kbd>Alt+T</kbd>
           </div>
           
           <div style="display: grid; grid-template-columns: 1fr auto; gap: 16px; padding: 12px; background: var(--bg-secondary); border-radius: 8px;">
@@ -709,7 +717,7 @@
               <strong>Go to Dashboard</strong>
               <div class="muted small">Navigate to dashboard</div>
             </div>
-            <kbd>D</kbd>
+            <kbd>Alt+D</kbd>
           </div>
           
           <div style="display: grid; grid-template-columns: 1fr auto; gap: 16px; padding: 12px; background: var(--bg-secondary); border-radius: 8px;">
@@ -717,7 +725,7 @@
               <strong>Go to Projects</strong>
               <div class="muted small">Navigate to projects</div>
             </div>
-            <kbd>P</kbd>
+            <kbd>Alt+P</kbd>
           </div>
           
           <div style="display: grid; grid-template-columns: 1fr auto; gap: 16px; padding: 12px; background: var(--bg-secondary); border-radius: 8px;">

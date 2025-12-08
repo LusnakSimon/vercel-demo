@@ -3,30 +3,52 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width,initial-scale=1">
-  <title>Project Notes</title>
+  <title>Project Notes - Research Notebook</title>
+  <script>
+    // Apply theme immediately to prevent flash
+    (function() {
+      const theme = localStorage.getItem('theme') || 'dark';
+      document.documentElement.setAttribute('data-theme', theme);
+    })();
+  </script>
   <link rel="stylesheet" href="/styles.css">
+  <script src="/enhancements.js" defer></script>
 </head>
 <body>
-  <header class="site-header">
-    <a href="/">Research Notebook</a>
-    <nav id="auth-actions" style="float:right"></nav>
-  </header>
-  <main class="container">
-    <div style="display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:12px">
-      <div>
-        <h1 id="project-title">Project Notes</h1>
-        <div id="project-meta" class="muted small">Loading project...</div>
+  <div class="container">
+    <header class="site-header">
+      <div class="brand">
+        <div class="logo">RN</div>
+        <div>
+          <h1 id="project-title">Project Notes</h1>
+          <p class="lead" id="project-meta">Loading project...</p>
+        </div>
       </div>
-      <div>
-        <button id="create-note" class="btn">Create Note</button>
+      <nav class="nav">
+        <a href="/dashboard.html">Dashboard</a>
+        <a href="/projects.html">Projects</a>
+        <a href="/todos.html">Todos</a>
+        <a href="/notes.html">Notes</a>
+        <a href="/contacts.html">Contacts</a>
+        <a href="/messages.html">Messages</a>
+        <button id="theme-toggle" title="Toggle theme">🌙</button>
+        <button id="help-toggle" title="Keyboard shortcuts (or press ?)">❓</button>
+        <span id="auth-actions"></span>
+      </nav>
+    </header>
+    
+    <div class="card">
+      <div style="display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:20px;flex-wrap:wrap;">
+        <h2 style="margin:0;">Notes</h2>
+        <button id="create-note" class="btn btn-primary">+ Create Note</button>
       </div>
+      <div style="display:flex;gap:12px;margin-bottom:20px;flex-wrap:wrap;">
+        <input id="search-q" type="text" placeholder="Search notes..." style="flex:1;min-width:200px;" />
+        <button id="search-btn" class="btn btn-secondary">Search</button>
+      </div>
+      <ul id="notes-list" class="list"></ul>
     </div>
-    <div class="row" style="margin-bottom:12px">
-      <input id="search-q" placeholder="Search notes" style="margin-left:8px;flex:1" />
-      <button id="search-btn" class="btn secondary" style="margin-left:6px">Search</button>
-    </div>
-    <ul id="notes-list" class="list"></ul>
-  </main>
+  </div>
   <script src="/app.js"></script>
   <script>
     // extract projectId from querystring

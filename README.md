@@ -18,6 +18,10 @@ A collaborative note-taking and todo application with real-time updates, built o
 ### Keyboard Shortcuts
 - `Cmd/Ctrl + K` - Open command palette
 - `Shift + T` - Toggle dark/light theme
+- `Alt + N` - New note
+- `Alt + T` - New todo
+- `Alt + D` - Go to dashboard
+- `Alt + P` - Go to projects
 - `?` - Show keyboard shortcuts help
 - `Esc` - Close modals and command palette
 
