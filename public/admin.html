@@ -46,7 +46,8 @@
     // Check if user is admin before showing admin content
     async function checkAdminAccess() {
       try {
-        const me = await api.request('/api/auth/me');
+        const response = await api.request('/api/auth/me');
+        const me = response.user || response;
         if (!me || me.role !== 'admin') {
           // Not an admin - redirect to dashboard
           alert('Access denied. Admin privileges required.');
