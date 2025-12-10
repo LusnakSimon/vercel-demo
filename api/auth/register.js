@@ -7,7 +7,10 @@ const JWT_SECRET = process.env.JWT_SECRET || 'dev-secret';
 module.exports = async (req, res) => {
   if (req.method !== 'POST') return res.status(405).end('Method Not Allowed');
   try {
-    const { email, password, name } = req.body || {};
+    // Debug: log that a register request arrived (do not log passwords)
+    const safeBody = req.body || {};
+    try { console.info('[auth/register] Incoming request:', { ip: req.headers['x-forwarded-for']||req.socket?.remoteAddress, email: safeBody.email ? String(safeBody.email) : undefined }); } catch(e){}
+    const { email, password, name } = safeBody;
     const { isEmail, requireString } = require('../../lib/validate');
     if (!email || !password) return res.status(400).json({ error: 'email and password required' });
     if (!isEmail(email)) return res.status(400).json({ error: 'invalid email' });
@@ -36,6 +39,7 @@ module.exports = async (req, res) => {
   const sess = await createSession(user._id);
   const cookie = `sid=${sess.sid}; Path=/; HttpOnly; SameSite=Lax; Max-Age=${7 * 24 * 60 * 60}`;
   res.setHeader('Set-Cookie', cookie);
+  try { console.info('[auth/register] Session created', { userId: String(user._id), sidPreview: String(sess.sid).slice(0,6) }); } catch(e){}
   return res.status(201).json({ ok: true, user });
   } catch (err) {
     console.error(err);

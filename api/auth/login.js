@@ -74,7 +74,10 @@ module.exports = async (req, res) => {
   }
   
   try {
-    const { email, password } = req.body || {};
+    // Debug: log that a login request arrived (do not log passwords)
+    const safeBody = req.body || {};
+    try { console.info('[auth/login] Incoming request:', { ip: getRateLimitKey(req), email: safeBody.email ? String(safeBody.email) : undefined }); } catch(e){}
+    const { email, password } = safeBody;
     if (!email || !password) return res.status(400).json({ error: 'email and password required' });
 
     const db = await connect();
@@ -101,6 +104,7 @@ module.exports = async (req, res) => {
     // set cookie (HttpOnly, SameSite=Lax)
     const cookie = `sid=${sess.sid}; Path=/; HttpOnly; SameSite=Lax; Max-Age=${7 * 24 * 60 * 60}`;
     res.setHeader('Set-Cookie', cookie);
+    try { console.info('[auth/login] Session created', { userId: String(user._id), sidPreview: String(sess.sid).slice(0,6) }); } catch(e){}
     return res.status(200).json({ ok: true, user: { _id: String(user._id), email: user.email, name: user.name, role: user.role } });
   } catch (err) {
     console.error(err);
